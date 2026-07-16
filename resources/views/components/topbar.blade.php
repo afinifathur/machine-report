@@ -4,7 +4,7 @@
     'activeSubnav' => null
 ])
 
-<header class="fixed top-0 right-0 w-[calc(100%-256px)] h-16 bg-surface-bright dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center px-margin-desktop z-40 shadow-sm dark:shadow-none ml-64">
+<header class="fixed top-0 right-0 w-[calc(100%-208px)] h-16 bg-surface-bright dark:bg-surface-dim border-b border-outline-variant dark:border-outline flex justify-between items-center px-margin-desktop z-40 shadow-sm dark:shadow-none ml-52">
     <div class="flex items-center gap-8">
         <h2 class="font-headline-sm text-headline-sm font-bold text-on-surface dark:text-on-surface">{{ $title }}</h2>
         

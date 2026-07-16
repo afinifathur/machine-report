@@ -132,7 +132,7 @@
     @endif
 
     <!-- Content Area -->
-    <main class="{{ ($sidebar ?? true) ? 'ml-64' : '' }} {{ ($topbar ?? true) ? 'mt-16' : '' }} p-margin-desktop max-w-[1440px] mx-auto">
+    <main class="{{ ($sidebar ?? true) ? 'ml-52' : '' }} {{ ($topbar ?? true) ? 'mt-16' : '' }} p-margin-desktop max-w-[1440px] mx-auto">
         {{ $slot }}
     </main>
 

@@ -149,7 +149,7 @@
                 <button data-target="panel-spareparts" class="tab-btn py-4 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">Kebutuhan Sparepart (BACA-SAJA)</button>
                 <button data-target="panel-documents" class="tab-btn py-4 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">Dokumen</button>
                 <button data-target="panel-photos" class="tab-btn py-4 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">Foto</button>
-                <button data-target="panel-timeline" class="tab-btn py-4 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">Riwayat Mesin</button>
+                <button data-target="panel-history" class="tab-btn py-4 font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">Riwayat Mesin</button>
             </div>
             
             <div class="flex-1 overflow-y-auto max-h-[420px] hide-scrollbar">
@@ -358,7 +358,7 @@
                 </div>
 
                 <!-- Panel 6: Medical History (Timeline) -->
-                <div id="panel-timeline" class="tab-panel p-6 hidden">
+                <div id="panel-history" class="tab-panel p-6 hidden">
                     <h4 class="font-label-md text-label-md text-primary uppercase tracking-wider mb-4">Riwayat Perawatan Mesin (PLACEHOLDER)</h4>
                     
                     <div class="relative pl-10 border-l-2 border-outline-variant space-y-8 ml-2">
@@ -479,37 +479,37 @@
             <span class="material-symbols-outlined text-[28px]" data-icon="add">add</span>
         </a>
     </div>
-</x-layouts.app>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        const tabPanels = document.querySelectorAll('.tab-panel');
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabPanels = document.querySelectorAll('.tab-panel');
 
-        tabButtons.forEach(btn => {
-            btn.addEventListener('click', function () {
-                // Remove active classes from all buttons
-                tabButtons.forEach(b => {
-                    b.classList.remove('text-primary', 'font-bold', 'border-b-2', 'border-primary');
-                    b.classList.add('text-on-surface-variant');
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    // Remove active classes from all buttons
+                    tabButtons.forEach(b => {
+                        b.classList.remove('text-primary', 'font-bold', 'border-b-2', 'border-primary');
+                        b.classList.add('text-on-surface-variant');
+                    });
+
+                    // Add active classes to clicked button
+                    btn.classList.add('text-primary', 'font-bold', 'border-b-2', 'border-primary');
+                    btn.classList.remove('text-on-surface-variant');
+
+                    // Hide all panels
+                    tabPanels.forEach(p => p.classList.add('hidden'));
+
+                    // Show target panel
+                    const targetId = btn.getAttribute('data-target');
+                    const targetPanel = document.getElementById(targetId);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                    }
                 });
-
-                // Add active classes to clicked button
-                btn.classList.add('text-primary', 'font-bold', 'border-b-2', 'border-primary');
-                btn.classList.remove('text-on-surface-variant');
-
-                // Hide all panels
-                tabPanels.forEach(p => p.classList.add('hidden'));
-
-                // Show target panel
-                const targetId = btn.getAttribute('data-target');
-                const targetPanel = document.getElementById(targetId);
-                if (targetPanel) {
-                    targetPanel.classList.remove('hidden');
-                }
             });
         });
-    });
-</script>
-@endpush
+    </script>
+    @endpush
+</x-layouts.app>
