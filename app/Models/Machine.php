@@ -12,6 +12,7 @@ class Machine extends Model
         'name',
         'department',
         'production_area',
+        'production_area_id',
         'category',
         'criticality',
         'operational_status',
@@ -75,6 +76,14 @@ class Machine extends Model
     public function creator(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the master production area.
+     */
+    public function masterProductionArea(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MasterProductionArea::class, 'production_area_id');
     }
 
     /**

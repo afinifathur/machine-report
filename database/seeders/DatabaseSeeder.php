@@ -3,11 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Machine;
-use App\Models\MachineComponent;
-use App\Models\MachineRequiredSparepart;
-use App\Models\MachineDocument;
-use App\Models\MachinePhoto;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -21,11 +16,13 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Default User
-        User::factory()->create([
-            'name' => 'System Executive',
-            'email' => 'admin@mrm.local',
-            'password' => bcrypt('password'),
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@mrm.local'],
+            [
+                'name' => 'System Executive',
+                'password' => bcrypt('password'),
+            ]
+        );
 
         // Seed Master Departments
         $depts = [
@@ -37,7 +34,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'PPIC', 'name' => 'PPIC', 'sort_order' => 60],
         ];
         foreach ($depts as $d) {
-            \App\Models\MasterDepartment::create($d);
+            \App\Models\MasterDepartment::firstOrCreate(['code' => $d['code']], $d);
         }
 
         // Seed Master Machine Categories
@@ -52,7 +49,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'PRESS', 'name' => 'Press', 'sort_order' => 80],
         ];
         foreach ($cats as $c) {
-            \App\Models\MasterMachineCategory::create($c);
+            \App\Models\MasterMachineCategory::firstOrCreate(['code' => $c['code']], $c);
         }
 
         if (app()->environment('testing')) {
