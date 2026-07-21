@@ -69,7 +69,7 @@ return [
             'url' => env('WMS_DB_URL'),
             'host' => env('WMS_DB_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('WMS_DB_PORT', env('DB_PORT', '3306')),
-            'database' => env('WMS_DB_DATABASE', 'warehouse_system_sparepart'),
+            'database' => env('WMS_DB_DATABASE', 'warehouse_system'),
             'username' => env('WMS_DB_USERNAME', env('DB_USERNAME', 'root')),
             'password' => env('WMS_DB_PASSWORD', env('DB_PASSWORD', '')),
             'unix_socket' => env('WMS_DB_SOCKET', ''),
