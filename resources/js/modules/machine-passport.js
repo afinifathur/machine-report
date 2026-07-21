@@ -86,24 +86,30 @@ export function initMachinePassport() {
                     }
 
                     data.forEach(item => {
+                        const code = item.code || item.erpCode || item.erp_code || '';
+                        const name = item.name || 'Unknown Sparepart';
+                        const brand = item.brand || '-';
+                        const location = item.location || '-';
+                        const stock = item.stock !== undefined ? item.stock : 0;
+
                         const row = document.createElement('div');
                         row.className = 'p-3 hover:bg-surface-container cursor-pointer transition-colors border-b border-outline-variant last:border-b-0 flex justify-between items-center';
                         row.innerHTML = `
                             <div>
-                                <div class="font-body-md font-bold text-on-surface">${escapeHtml(item.name)}</div>
+                                <div class="font-body-md font-bold text-on-surface">${escapeHtml(name)}</div>
                                 <div class="text-xs text-on-surface-variant flex flex-wrap gap-2 mt-0.5">
-                                    <span>ERP: <strong class="mono text-on-surface">${escapeHtml(item.code)}</strong></span>
-                                    <span>Brand: <strong>${escapeHtml(item.brand || '-')}</strong></span>
-                                    <span>Rak: <strong class="mono">${escapeHtml(item.location || '-')}</strong></span>
+                                    <span>ERP: <strong class="mono text-on-surface">${escapeHtml(code)}</strong></span>
+                                    <span>Brand: <strong>${escapeHtml(brand)}</strong></span>
+                                    <span>Rak: <strong class="mono">${escapeHtml(location)}</strong></span>
                                 </div>
                             </div>
                             <div class="text-right flex items-center gap-2">
-                                <span class="text-xs font-bold mono ${item.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${item.stock}</span>
+                                <span class="text-xs font-bold mono ${stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${stock}</span>
                                 <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
                             </div>
                         `;
                         row.addEventListener('click', () => {
-                            mapSparepart(machineCode, item.code);
+                            mapSparepart(machineCode, code);
                         });
                         searchResults.appendChild(row);
                     });

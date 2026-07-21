@@ -1143,24 +1143,30 @@
                             }
 
                             data.forEach(item => {
+                                const itemCode = item.code || item.erpCode || item.erp_code || '';
+                                const itemName = item.name || 'Unknown Sparepart';
+                                const itemBrand = item.brand || '-';
+                                const itemLocation = item.location || '-';
+                                const itemStock = item.stock !== undefined ? item.stock : 0;
+
                                 const row = document.createElement('div');
                                 row.className = 'p-3 hover:bg-surface-container cursor-pointer transition-colors border-b border-outline-variant last:border-b-0 flex justify-between items-center';
                                 row.innerHTML = `
                                     <div>
-                                        <div class="font-body-md font-bold text-on-surface">${item.name}</div>
+                                        <div class="font-body-md font-bold text-on-surface">${itemName}</div>
                                         <div class="text-xs text-on-surface-variant flex flex-wrap gap-2 mt-0.5">
-                                            <span>ERP: <strong class="mono text-on-surface">${item.code}</strong></span>
-                                            <span>Brand: <strong>${item.brand || '-'}</strong></span>
-                                            <span>Rak: <strong class="mono">${item.location || '-'}</strong></span>
+                                            <span>ERP: <strong class="mono text-on-surface">${itemCode}</strong></span>
+                                            <span>Brand: <strong>${itemBrand}</strong></span>
+                                            <span>Rak: <strong class="mono">${itemLocation}</strong></span>
                                         </div>
                                     </div>
                                     <div class="text-right flex items-center gap-2">
-                                        <span class="text-xs font-bold mono ${item.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${item.stock}</span>
+                                        <span class="text-xs font-bold mono ${itemStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${itemStock}</span>
                                         <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
                                     </div>
                                 `;
                                 row.addEventListener('click', () => {
-                                    mapSparepart(item.code);
+                                    mapSparepart(itemCode);
                                 });
                                 searchResults.appendChild(row);
                             });
