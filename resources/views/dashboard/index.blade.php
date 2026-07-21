@@ -408,8 +408,8 @@
 
     <!-- Floating Action Button -->
     <div class="fixed bottom-8 right-8 z-50">
-        <a href="{{ route('maintenances.create') }}" class="w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
-            <span class="material-symbols-outlined text-[28px]" data-icon="add">add</span>
+        <a href="{{ route('planning.index') }}" class="w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform" title="Papan Perencanaan">
+            <span class="material-symbols-outlined text-[28px]" data-icon="calendar_month">calendar_month</span>
         </a>
     </div>
 </x-layouts.app>

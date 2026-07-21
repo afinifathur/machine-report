@@ -7,6 +7,7 @@ use App\Models\MachineComponent;
 use App\Models\MachineRequiredSparepart;
 use App\Models\MachineDocument;
 use App\Models\MachinePhoto;
+use App\Models\MasterProductionArea;
 use Illuminate\Database\Seeder;
 
 class DummyMachineSeeder extends Seeder
@@ -185,10 +186,20 @@ class DummyMachineSeeder extends Seeder
         ];
 
         foreach ($machinesData as $data) {
+            $areaCode = match($data['department']) {
+                'Machining' => 'MACHINING',
+                'Assembly Center' => 'ASSEMBLY',
+                'Maintenance' => 'MAINTENANCE',
+                default => 'MACHINING'
+            };
+            $area = MasterProductionArea::where('code', $areaCode)->first();
+            $productionAreaId = $area ? $area->id : null;
+
             $machine = Machine::create([
                 'code' => $data['code'],
                 'name' => $data['name'],
                 'department' => $data['department'],
+                'production_area_id' => $productionAreaId,
                 'production_area' => $data['production_area'],
                 'category' => $data['category'],
                 'criticality' => $data['criticality'],

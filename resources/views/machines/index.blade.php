@@ -33,57 +33,6 @@
     // Determine custom sort parameters
     $customSortBy = request()->input('sort_by');
     $customSortOrder = request()->input('sort_order', 'asc');
-
-    // Sort machines:
-    // 1. ACTIVE first, then INACTIVE, then RETIRED
-    // 2. Within each group:
-    //    - If custom sort is requested, sort by that column
-    //    - Else, sort by health_score ascending, then code ascending
-    $sortedMachines = $machines->sort(function ($a, $b) use ($lifecycleOrder, $customSortBy, $customSortOrder) {
-        $aLifecycle = $a->lifecycle_status ?? 'ACTIVE';
-        $bLifecycle = $b->lifecycle_status ?? 'ACTIVE';
-        
-        $aOrder = $lifecycleOrder[$aLifecycle] ?? 1;
-        $bOrder = $lifecycleOrder[$bLifecycle] ?? 1;
-        
-        if ($aOrder !== $bOrder) {
-            return $aOrder <=> $bOrder;
-        }
-        
-        if ($customSortBy) {
-            if ($customSortBy === 'health') {
-                $valA = $a->health_score;
-                $valB = $b->health_score;
-            } elseif ($customSortBy === 'criticality') {
-                $critOrder = [
-                    'mission_critical' => 1,
-                    'high' => 2,
-                    'medium' => 3,
-                    'low' => 4
-                ];
-                $valA = $critOrder[$a->criticality] ?? 5;
-                $valB = $critOrder[$b->criticality] ?? 5;
-            } else {
-                $valA = $a->{$customSortBy};
-                $valB = $b->{$customSortBy};
-            }
-            
-            if ($valA != $valB) {
-                return $customSortOrder === 'asc' ? ($valA <=> $valB) : ($valB <=> $valA);
-            }
-        } else {
-            // Default sort: Health Score ascending -> Machine Code
-            $healthA = $a->health_score;
-            $healthB = $b->health_score;
-            if ($healthA !== $healthB) {
-                return $healthA <=> $healthB;
-            }
-            
-            return strcasecmp($a->code, $b->code);
-        }
-        
-        return strcasecmp($a->code, $b->code);
-    });
 @endphp
 
 <x-layouts.app 
@@ -95,7 +44,7 @@
     <!-- Breadcrumbs -->
     <x-breadcrumb :items="['Daftar Mesin' => route('machines.index')]" />
 
-    <x-page-header title="Daftar Mesin" subtitle="Total: {{ $sortedMachines->count() }} Unit Peralatan Terdaftar" class="mb-6">
+    <x-page-header title="Daftar Mesin" subtitle="Total: {{ $machines->total() }} Unit Peralatan Terdaftar" class="mb-6">
         <x-slot name="right">
             <x-button variant="primary" icon="add" href="{{ route('machines.create') }}">
                 Tambah Mesin Baru
@@ -235,7 +184,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant">
-                        @forelse($sortedMachines as $machine)
+                        @forelse($machines as $machine)
                             @php
                                 $isMachineActive = $machine->lifecycle_status === 'ACTIVE';
                             @endphp
@@ -267,7 +216,13 @@
                                 <!-- Department & Area -->
                                 <td class="px-4 py-2.5 font-body-sm">
                                     <span class="font-semibold block @if($isMachineActive) text-on-surface @else text-slate-500 @endif">{{ $machine->department }}</span>
-                                    <span class="@if($isMachineActive) text-on-surface-variant @else text-slate-500/80 @endif text-xs">{{ $machine->production_area }}</span>
+                                    <span class="@if($isMachineActive) text-on-surface-variant @else text-slate-500/80 @endif text-xs">
+                                        @if($machine->productionArea)
+                                            {{ $machine->productionArea->name }}@if($machine->production_area) - {{ $machine->production_area }}@endif
+                                        @else
+                                            {{ $machine->production_area }}
+                                        @endif
+                                    </span>
                                 </td>
 
                                 <!-- Criticality -->
@@ -356,6 +311,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="px-4 py-3 border-t border-outline-variant bg-surface-container-low">
+                {{ $machines->links() }}
             </div>
         </div>
     </div>

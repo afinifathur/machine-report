@@ -2,7 +2,7 @@
 
 namespace App\Repositories;
 
-class WarehouseRepository
+class MockWarehouseRepository implements WarehouseRepositoryInterface
 {
     /**
      * Simulation of warehouse master items.
@@ -97,6 +97,32 @@ class WarehouseRepository
         $results = [];
         foreach ($itemCodes as $code) {
             $results[$code] = $this->getItemDetails($code);
+        }
+        return $results;
+    }
+
+    /**
+     * Search warehouse items by code or name.
+     */
+    public function searchItems(string $query): array
+    {
+        $search = strtolower(trim($query));
+        if ($search === '') {
+            return [];
+        }
+
+        $results = [];
+        foreach ($this->mockWarehouse as $code => $item) {
+            if (str_contains(strtolower($code), $search) || str_contains(strtolower($item['name']), $search)) {
+                $results[] = [
+                    'code' => $code,
+                    'name' => $item['name'],
+                    'stock' => $item['stock'],
+                    'location' => $item['location'],
+                    'supplier' => $item['supplier'],
+                    'availability' => $item['stock'] > 0 ? 'Available' : 'Out of Stock',
+                ];
+            }
         }
         return $results;
     }

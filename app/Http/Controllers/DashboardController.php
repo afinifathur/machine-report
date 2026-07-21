@@ -6,18 +6,18 @@ use App\Models\Machine;
 use App\Models\MaintenancePlan;
 use App\Models\MaintenanceExecution;
 use App\Services\MaintenanceReadinessService;
-use App\Repositories\WarehouseRepository;
+use App\Repositories\WarehouseRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     protected MaintenanceReadinessService $readinessService;
-    protected WarehouseRepository $warehouseRepo;
+    protected WarehouseRepositoryInterface $warehouseRepo;
 
     public function __construct(
         MaintenanceReadinessService $readinessService,
-        WarehouseRepository $warehouseRepo
+        WarehouseRepositoryInterface $warehouseRepo
     ) {
         $this->readinessService = $readinessService;
         $this->warehouseRepo = $warehouseRepo;

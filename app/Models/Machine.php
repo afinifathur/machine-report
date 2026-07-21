@@ -27,6 +27,7 @@ class Machine extends Model
         'lifecycle_status',
         'notes',
         'created_by',
+        'production_area_id',
     ];
 
     protected function casts(): array
@@ -55,7 +56,7 @@ class Machine extends Model
     }
 
     /**
-     * Get machine documents (e.g. electrical drawings, manuals).
+     * Get machine documents (legacy upload support).
      */
     public function documents(): HasMany
     {
@@ -63,11 +64,27 @@ class Machine extends Model
     }
 
     /**
+     * Get machine document links (Library ISO references).
+     */
+    public function documentLinks(): HasMany
+    {
+        return $this->hasMany(MachineDocumentLink::class)->orderBy('sort_order', 'asc')->latest('created_at');
+    }
+
+    /**
      * Get machine photos.
      */
     public function photos(): HasMany
     {
-        return $this->hasMany(MachinePhoto::class);
+        return $this->hasMany(MachinePhoto::class)->orderBy('sort_order', 'asc')->latest('created_at');
+    }
+
+    /**
+     * Get the production area.
+     */
+    public function productionArea(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MasterProductionArea::class, 'production_area_id');
     }
 
     /**
@@ -87,19 +104,40 @@ class Machine extends Model
     }
 
     /**
-     * Check if machine has an overall photo uploaded.
+     * Check if machine optional physical details are complete.
      */
-    public function getHasPhotoAttribute(): bool
+    public function getHasIdentitasAttribute(): bool
     {
-        return $this->photos()->where('type', 'overall')->whereNotNull('file_path')->where('file_path', '!=', '')->exists();
+        return !empty($this->manufacturer) &&
+               !empty($this->model) &&
+               !empty($this->vendor) &&
+               !empty($this->serial_number) &&
+               !empty($this->installation_date) &&
+               !empty($this->commissioning_date);
     }
 
     /**
-     * Check if machine has a manual book uploaded.
+     * Check if machine has components.
+     */
+    public function getHasComponentsAttribute(): bool
+    {
+        return $this->components()->exists();
+    }
+
+    /**
+     * Check if machine has any photo uploaded.
+     */
+    public function getHasPhotoAttribute(): bool
+    {
+        return $this->photos()->whereNotNull('file_path')->where('file_path', '!=', '')->exists();
+    }
+
+    /**
+     * Check if machine has document links or legacy documents.
      */
     public function getHasManualAttribute(): bool
     {
-        return $this->documents()->where('type', 'manual_book')->whereNotNull('file_name')->where('file_name', '!=', '')->exists();
+        return $this->documentLinks()->exists() || $this->documents()->whereNotNull('file_name')->where('file_name', '!=', '')->exists();
     }
 
     /**
@@ -116,6 +154,30 @@ class Machine extends Model
     public function getHasSparepartsAttribute(): bool
     {
         return $this->requiredSpareparts()->exists();
+    }
+
+    /**
+     * Get completion progress of passport checklist.
+     */
+    public function getCompletionProgressAttribute(): array
+    {
+        $checklist = [
+            'identitas' => $this->has_identitas,
+            'sparepart' => $this->has_spareparts,
+            'manual_book' => $this->has_manual,
+            'foto' => $this->has_photo,
+            'qr' => $this->has_qr,
+            'komponen' => $this->has_components,
+        ];
+
+        $completed = count(array_filter($checklist));
+        $total = count($checklist);
+
+        return [
+            'checklist' => $checklist,
+            'completed' => $completed,
+            'total' => $total,
+        ];
     }
 
     /**

@@ -104,12 +104,9 @@ class MachineRegistryTest extends TestCase
         $response->assertSee('SEAL-TC-40');
         $response->assertSee('Stok Habis'); // SEAL-TC-40 stock level is 0
 
-        // Verify document listing with complete vs missing placeholders
-        $response->assertSee('Manual Book');
-        $response->assertSee('manual_book_cnc_08.pdf'); // completed manual
-        $response->assertSee('Diagram Elektrikal');
-        $response->assertSee('electrical_schematic_v2.pdf'); // completed diagram
-        $response->assertSee('Diagram Hidrolik');
-        $response->assertSee('Belum Lengkap'); // missing diagram placeholder
+        // Verify document section (Library ISO integration)
+        $response->assertSee('Dokumentasi Mesin');
+        $response->assertSee('Library ISO');
+        $response->assertSee('Hubungkan Dokumen');
     }
 }

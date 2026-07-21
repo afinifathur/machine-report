@@ -1,18 +1,18 @@
 <x-layouts.app 
-    title="Daftar Perawatan | Sistem MRM"
-    topbar-title="Manajemen Perawatan"
-    :subnav="['Semua Catatan' => route('maintenances.index'), 'Terjadwal' => '#', 'Korektif' => '#']"
-    active-subnav="Semua Catatan"
+    title="Pelaksanaan Perawatan | Sistem MRM"
+    topbar-title="Pelaksanaan Perawatan"
+    :subnav="[
+        'Semua Eksekusi' => route('maintenances.index'),
+        'Hari Ini' => route('planning.index', ['status' => 'approved']),
+        'Menunggu Review' => route('planning.index', ['readiness_status' => 'Waiting Review']),
+        'Riwayat Eksekusi' => route('planning.index', ['readiness_status' => 'Completed'])
+    ]"
+    active-subnav="Semua Eksekusi"
 >
     <!-- Breadcrumbs -->
-    <x-breadcrumb :items="['Perawatan' => route('maintenances.index')]" />
+    <x-breadcrumb :items="['Pelaksanaan Perawatan' => route('maintenances.index')]" />
 
-    <x-page-header title="Catatan Perawatan" subtitle="Log tindakan perawatan klinis untuk peralatan manufaktur" class="mb-6">
-        <x-slot name="right">
-            <x-button variant="primary" icon="medical_services" href="{{ route('maintenances.create') }}">
-                Catat Perawatan Baru
-            </x-button>
-        </x-slot>
+    <x-page-header title="Semua Eksekusi Perawatan" subtitle="Log tindakan pelaksanaan perawatan peralatan manufaktur" class="mb-6">
     </x-page-header>
 
     <div class="grid grid-cols-12 gap-6">

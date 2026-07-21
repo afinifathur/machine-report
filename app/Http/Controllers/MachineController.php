@@ -3,17 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Machine;
+use App\Models\MaintenancePlan;
 use App\Models\MasterDepartment;
 use App\Models\MasterMachineCategory;
-use App\Repositories\WarehouseRepository;
+use App\Repositories\WarehouseRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class MachineController extends Controller
 {
-    protected WarehouseRepository $warehouseRepo;
+    protected WarehouseRepositoryInterface $warehouseRepo;
 
-    public function __construct(WarehouseRepository $warehouseRepo)
+    public function __construct(WarehouseRepositoryInterface $warehouseRepo)
     {
         $this->warehouseRepo = $warehouseRepo;
     }
@@ -23,7 +24,7 @@ class MachineController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Machine::query();
+        $query = Machine::query()->with(['photos', 'productionArea']);
 
         // 1. Lifecycle Status Filter (Default to ACTIVE)
         $statusFilter = strtoupper($request->input('status_filter', 'ACTIVE'));
@@ -70,32 +71,50 @@ class MachineController extends Controller
         $sortBy = $request->input('sort_by', 'code');
         $sortOrder = $request->input('sort_order', 'asc');
 
-        // Apply non-health sorting at DB level
-        if ($sortBy !== 'health') {
-            // Special treatment for custom criticality order if sorting by criticality
-            if ($sortBy === 'criticality') {
-                $query->orderByRaw("
-                    CASE criticality
-                        WHEN 'mission_critical' THEN 1
-                        WHEN 'high' THEN 2
-                        WHEN 'medium' THEN 3
-                        WHEN 'low' THEN 4
-                        ELSE 5
-                    END {$sortOrder}
-                ");
-            } else {
-                $query->orderBy($sortBy, $sortOrder);
-            }
-            $machines = $query->get();
+        // Always sort ACTIVE first, then INACTIVE, then RETIRED
+        $query->orderByRaw("
+            CASE lifecycle_status
+                WHEN 'ACTIVE' THEN 1
+                WHEN 'INACTIVE' THEN 2
+                WHEN 'RETIRED' THEN 3
+                ELSE 4
+            END ASC
+        ");
+
+        // Within each group, apply custom or default sorting
+        if ($sortBy === 'health') {
+            $query->orderByRaw("
+                CASE operational_status
+                    WHEN 'breakdown' THEN 1
+                    WHEN 'maintenance' THEN 2
+                    WHEN 'stopped' THEN 3
+                    WHEN 'idle' THEN 4
+                    WHEN 'running' THEN 5
+                    ELSE 6
+                END {$sortOrder}
+            ");
+        } elseif ($sortBy === 'criticality') {
+            $query->orderByRaw("
+                CASE criticality
+                    WHEN 'mission_critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                    ELSE 5
+                END {$sortOrder}
+            ");
         } else {
-            // Health is transient/calculated, so sort in-memory
-            $machines = $query->get();
-            if ($sortOrder === 'desc') {
-                $machines = $machines->sortByDesc(fn($m) => $m->health_score)->values();
-            } else {
-                $machines = $machines->sortBy(fn($m) => $m->health_score)->values();
-            }
+            $validSortColumns = ['code', 'name', 'department', 'category', 'criticality', 'operational_status', 'lifecycle_status'];
+            $actualSortBy = in_array($sortBy, $validSortColumns) ? $sortBy : 'code';
+            $query->orderBy($actualSortBy, $sortOrder);
         }
+
+        if ($sortBy !== 'code') {
+            $query->orderBy('code', 'asc');
+        }
+
+        // Paginate using Laravel default simple pagination (15 machines per page)
+        $machines = $query->paginate(15)->withQueryString();
 
         // Fetch distinct filter options from active Master Tables for dynamic dropdown selections
         $departments = MasterDepartment::where('is_active', true)->orderBy('sort_order')->pluck('name')->values();
@@ -122,9 +141,10 @@ class MachineController extends Controller
     {
         $departments = MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
         $categories = MasterMachineCategory::where('is_active', true)->orderBy('sort_order')->get();
+        $productionAreas = \App\Models\MasterProductionArea::where('is_active', true)->orderBy('sort_order')->get();
         $lifecycles = ['ACTIVE', 'INACTIVE', 'RETIRED'];
 
-        return view('machines.create', compact('departments', 'categories', 'lifecycles'));
+        return view('machines.create', compact('departments', 'categories', 'productionAreas', 'lifecycles'));
     }
 
     /**
@@ -156,6 +176,7 @@ class MachineController extends Controller
                 'string',
                 Rule::exists('master_machine_categories', 'name')->where('is_active', true)
             ],
+            'production_area_id' => 'required|exists:master_production_areas,id',
             'production_area' => 'nullable|string|max:255',
             'manufacturer' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
@@ -172,12 +193,14 @@ class MachineController extends Controller
         // Auto-assign is_active based on lifecycle_status
         $isActive = ($validated['lifecycle_status'] === 'ACTIVE');
 
-        Machine::create(array_merge($validated, [
+        $machine = Machine::create(array_merge($validated, [
             'is_active' => $isActive,
             'created_by' => auth()->id(),
             'criticality' => 'medium', // Default fallback
             'operational_status' => 'running', // Default fallback
         ]));
+
+        app(\App\Services\MachineQrCodeService::class)->ensureExists($machine);
 
         return redirect()->route('machines.show', $validated['code'])
             ->with('success', "Mesin {$validated['code']} ({$validated['name']}) berhasil terdaftar.");
@@ -189,15 +212,29 @@ class MachineController extends Controller
     public function show(string $code)
     {
         // Retrieve the machine identity with associated structures
-        $machine = Machine::with(['components', 'requiredSpareparts', 'documents', 'photos'])
+        $machine = Machine::with(['components', 'requiredSpareparts', 'documents', 'photos', 'productionArea'])
             ->where('code', $code)
             ->firstOrFail();
 
-        // Extract required sparepart codes and fetch stock status from Warehouse Repository
-        $itemCodes = $machine->requiredSpareparts->pluck('warehouse_item_code')->toArray();
-        $sparepartsDetails = $this->warehouseRepo->getItemsDetails($itemCodes);
+        // Automatically recover QR Code file if missing from disk
+        if (!empty($machine->qr_code_path) && !file_exists(public_path($machine->qr_code_path))) {
+            app(\App\Services\MachineQrCodeService::class)->ensureExists($machine);
+        }
 
-        return view('machines.show', compact('machine', 'sparepartsDetails'));
+        // Map required spareparts with WMS details and keep their local relationship id
+        $sparepartsDetails = $machine->requiredSpareparts->map(function ($required) {
+            $details = $this->warehouseRepo->getItemDetails($required->warehouse_item_code);
+            $details['mapping_id'] = $required->id;
+            return $details;
+        });
+
+        // Fetch oldest active (non-completed/non-cancelled) plan for this machine
+        $activePlan = MaintenancePlan::where('machine_id', $machine->id)
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->orderBy('scheduled_date', 'asc')
+            ->first();
+
+        return view('machines.show', compact('machine', 'sparepartsDetails', 'activePlan'));
     }
 
     /**
@@ -208,9 +245,10 @@ class MachineController extends Controller
         $machine = Machine::where('code', $code)->firstOrFail();
         $departments = MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
         $categories = MasterMachineCategory::where('is_active', true)->orderBy('sort_order')->get();
+        $productionAreas = \App\Models\MasterProductionArea::where('is_active', true)->orderBy('sort_order')->get();
         $lifecycles = ['ACTIVE', 'INACTIVE', 'RETIRED'];
 
-        return view('machines.edit', compact('machine', 'departments', 'categories', 'lifecycles'));
+        return view('machines.edit', compact('machine', 'departments', 'categories', 'productionAreas', 'lifecycles'));
     }
 
     /**
@@ -232,6 +270,7 @@ class MachineController extends Controller
                 'string',
                 Rule::exists('master_machine_categories', 'name')->where('is_active', true)
             ],
+            'production_area_id' => 'required|exists:master_production_areas,id',
             'production_area' => 'nullable|string|max:255',
             'manufacturer' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',

@@ -3,13 +3,13 @@
 namespace App\Services;
 
 use App\Models\MaintenancePlan;
-use App\Repositories\WarehouseRepository;
+use App\Repositories\WarehouseRepositoryInterface;
 
 class MaintenanceReadinessService
 {
-    protected WarehouseRepository $warehouseRepository;
+    protected WarehouseRepositoryInterface $warehouseRepository;
 
-    public function __construct(WarehouseRepository $warehouseRepository)
+    public function __construct(WarehouseRepositoryInterface $warehouseRepository)
     {
         $this->warehouseRepository = $warehouseRepository;
     }

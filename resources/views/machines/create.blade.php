@@ -83,6 +83,22 @@
                         @endforeach
                     </select>
                 </div>
+
+                <!-- Production Area Dropdown -->
+                <div>
+                    <label for="production_area_id" class="block text-label-md font-label-md text-on-surface font-semibold mb-2">
+                        Area Produksi <span class="text-error">*</span>
+                    </label>
+                    <select name="production_area_id" id="production_area_id" required
+                            class="w-full px-4 py-2.5 bg-surface-container border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary font-body-md text-sm">
+                        <option value="">-- Pilih Area Produksi --</option>
+                        @foreach($productionAreas as $area)
+                            <option value="{{ $area->id }}" {{ old('production_area_id') == $area->id ? 'selected' : '' }}>
+                                {{ $area->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
 
             <!-- Optional Fields Group -->
@@ -90,12 +106,12 @@
                 <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold mb-4">Detail Tambahan (Opsional)</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Production Area -->
+                    <!-- Specific Zone / Location -->
                     <div>
-                        <label for="production_area" class="block text-label-md font-label-md text-on-surface mb-2">Area Produksi</label>
+                        <label for="production_area" class="block text-label-md font-label-md text-on-surface mb-2">Zona / Lokasi Spesifik (Opsional)</label>
                         <input type="text" name="production_area" id="production_area" value="{{ old('production_area') }}"
                                class="w-full px-4 py-2.5 bg-surface-container border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary font-body-md text-sm" 
-                               placeholder="Contoh: Gedung A, Lantai 2"/>
+                               placeholder="Contoh: Area A, Gedung B, Lantai 2..."/>
                     </div>
 
                     <!-- Manufacturer -->

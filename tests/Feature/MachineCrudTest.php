@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Machine;
 use App\Models\MasterDepartment;
 use App\Models\MasterMachineCategory;
+use App\Models\MasterProductionArea;
 use App\Models\User;
 use App\Models\MaintenancePlan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +18,7 @@ class MachineCrudTest extends TestCase
     protected User $adminUser;
     protected MasterDepartment $department;
     protected MasterMachineCategory $category;
+    protected MasterProductionArea $productionArea;
 
     protected function setUp(): void
     {
@@ -34,10 +36,11 @@ class MachineCrudTest extends TestCase
         // Fetch master data
         $this->department = MasterDepartment::first();
         $this->category = MasterMachineCategory::first();
+        $this->productionArea = MasterProductionArea::first();
     }
 
     /**
-     * Test progressive registration works with just the 4 required fields.
+     * Test progressive registration works with just the required fields.
      */
     public function test_machine_progressive_registration_success(): void
     {
@@ -46,6 +49,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Machine 99 CNC',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
             'lifecycle_status' => 'ACTIVE',
         ];
 
@@ -58,6 +62,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Machine 99 CNC',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
             'is_active' => true,
             'lifecycle_status' => 'ACTIVE',
             'created_by' => $this->adminUser->id,
@@ -71,10 +76,10 @@ class MachineCrudTest extends TestCase
     {
         $response = $this->post(route('machines.store'), [
             'code' => 'CNC-88',
-            // Missing name, department, category
+            // Missing name, department, category, production_area_id
         ]);
 
-        $response->assertSessionHasErrors(['name', 'department', 'category']);
+        $response->assertSessionHasErrors(['name', 'department', 'category', 'production_area_id']);
         $this->assertDatabaseMissing('machines', ['code' => 'CNC-88']);
     }
 
@@ -89,6 +94,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Machine A',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
         ]);
 
         // Attempting to register another machine with same code
@@ -97,6 +103,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Machine B',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
         ]);
 
         $response->assertSessionHasErrors(['code']);
@@ -112,6 +119,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Original Name',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
             'is_active' => true,
             'lifecycle_status' => 'ACTIVE',
         ]);
@@ -121,6 +129,7 @@ class MachineCrudTest extends TestCase
             'name' => 'Updated Name',
             'department' => $this->department->name,
             'category' => $this->category->name,
+            'production_area_id' => $this->productionArea->id,
             'lifecycle_status' => 'ACTIVE',
         ]);
 
@@ -129,6 +138,7 @@ class MachineCrudTest extends TestCase
         $this->assertDatabaseHas('machines', [
             'code' => 'IMMUTABLE-01',
             'name' => 'Updated Name',
+            'production_area_id' => $this->productionArea->id,
         ]);
 
         $this->assertDatabaseMissing('machines', [

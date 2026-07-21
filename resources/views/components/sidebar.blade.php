@@ -23,7 +23,7 @@
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('maintenances.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('maintenances.index') }}">
             <span class="material-symbols-outlined" data-icon="build">build</span>
-            <span class="font-body-md text-body-md {{ request()->routeIs('maintenances.*') ? 'font-semibold' : '' }}">Perawatan</span>
+            <span class="font-body-md text-body-md {{ request()->routeIs('maintenances.*') ? 'font-semibold' : '' }}">Pelaksanaan Perawatan</span>
         </a>
 
         <!-- Breakdown & Downtime -->

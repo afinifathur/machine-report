@@ -25,7 +25,7 @@
     
     <div class="flex items-center gap-4">
         <!-- Emergency Report Button -->
-        <a href="{{ route('maintenances.create') }}" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg font-body-md flex items-center gap-2 transition-colors">
+        <a href="{{ route('breakdowns.index') }}" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg font-body-md flex items-center gap-2 transition-colors">
             <span class="material-symbols-outlined text-[20px]" data-icon="warning">warning</span>
             Lapor Darurat
         </a>

@@ -3,26 +3,26 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\MasterDepartment;
+use App\Models\MasterMachineCategory;
+use App\Models\MasterProductionArea;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+class MasterDataSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Run the database seeds.
      */
     public function run(): void
     {
         // Default User
-        User::firstOrCreate(
-            ['email' => 'admin@mrm.local'],
-            [
+        if (!User::where('email', 'admin@mrm.local')->exists()) {
+            User::create([
                 'name' => 'System Executive',
+                'email' => 'admin@mrm.local',
                 'password' => bcrypt('password'),
-            ]
-        );
+            ]);
+        }
 
         // Seed Master Departments
         $depts = [
@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'PPIC', 'name' => 'PPIC', 'sort_order' => 60],
         ];
         foreach ($depts as $d) {
-            \App\Models\MasterDepartment::firstOrCreate(['code' => $d['code']], $d);
+            MasterDepartment::updateOrCreate(['code' => $d['code']], $d);
         }
 
         // Seed Master Machine Categories
@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'PRESS', 'name' => 'Press', 'sort_order' => 80],
         ];
         foreach ($cats as $c) {
-            \App\Models\MasterMachineCategory::firstOrCreate(['code' => $c['code']], $c);
+            MasterMachineCategory::updateOrCreate(['code' => $c['code']], $c);
         }
 
         // Seed Master Production Areas
@@ -64,14 +64,7 @@ class DatabaseSeeder extends Seeder
             ['code' => 'UTILITY', 'name' => 'Utility', 'sort_order' => 80],
         ];
         foreach ($areas as $a) {
-            \App\Models\MasterProductionArea::firstOrCreate(['code' => $a['code']], $a);
-        }
-
-        if (app()->environment('testing')) {
-            $this->call(DummyMachineSeeder::class);
-            $this->call(MaintenancePlanSeeder::class);
-        } else {
-            $this->call(RealMachineSeeder::class);
+            MasterProductionArea::updateOrCreate(['code' => $a['code']], $a);
         }
     }
 }
