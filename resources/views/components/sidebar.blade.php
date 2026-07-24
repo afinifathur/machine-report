@@ -40,6 +40,13 @@
             <span class="font-body-md text-body-md {{ request()->routeIs('spareparts.*') ? 'font-semibold' : '' }}">Integrasi Sparepart</span>
         </a>
 
+        <!-- Special Procurement -->
+        <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('procurements.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
+           href="{{ route('procurements.index') }}">
+            <span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+            <span class="font-body-md text-body-md {{ request()->routeIs('procurements.*') ? 'font-semibold' : '' }}">Pengadaan Khusus</span>
+        </a>
+
         <!-- Planning -->
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('planning.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('planning.index') }}">
@@ -63,15 +70,25 @@
     </div>
 
     <!-- User Profile Widget -->
-    <div class="mt-auto px-4 pt-3 border-t border-outline-variant">
+    <div class="mt-auto px-4 pt-3 border-t border-outline-variant space-y-3">
         <div class="flex items-center gap-2">
             <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary">
                 <span class="material-symbols-outlined" data-icon="person">person</span>
             </div>
-            <div>
-                <p class="font-label-md text-label-md font-bold">Admin User</p>
-                <p class="font-label-sm text-label-sm opacity-60 text-xs">System Exec.</p>
+            <div class="flex-1 min-w-0">
+                <p class="font-label-md text-label-md font-bold text-xs truncate">{{ auth()->user()->name ?? 'Guest User' }}</p>
+                <p class="font-label-sm text-label-sm opacity-60 text-[10px] truncate">{{ auth()->user() ? (auth()->user()->roles->first()->name ?? 'No Role') : 'Guest' }}</p>
             </div>
         </div>
+
+        @auth
+            <form action="{{ route('logout') }}" method="POST" class="pt-1">
+                @csrf
+                <button type="submit" class="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-error hover:bg-error-container hover:text-on-error-container border border-outline-variant rounded-lg font-semibold transition-colors justify-center">
+                    <span class="material-symbols-outlined text-[16px]">logout</span>
+                    Keluar / Logout
+                </button>
+            </form>
+        @endauth
     </div>
 </nav>

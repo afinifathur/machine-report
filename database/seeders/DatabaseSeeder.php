@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Seed Roles and Permissions
+        $this->call(PermissionSeeder::class);
+
         // Seed Master Departments
         $depts = [
             ['code' => 'MACHINING', 'name' => 'Machining', 'sort_order' => 10],
