@@ -151,4 +151,30 @@ class ProcurementCasePolicy
             default => false,
         };
     }
+
+    /**
+     * Determine whether the user can upload attachments.
+     */
+    public function uploadAttachment(User $user, ProcurementCase $case): bool
+    {
+        if (!$this->view($user, $case)) {
+            return false;
+        }
+
+        return $case->status === ProcurementStatus::DRAFT;
+    }
+
+    /**
+     * Determine whether the user can delete attachments.
+     */
+    public function deleteAttachment(User $user, \App\Models\ProcurementAttachment $attachment): bool
+    {
+        $case = $attachment->case;
+
+        if ($case->status !== ProcurementStatus::DRAFT) {
+            return false;
+        }
+
+        return $attachment->uploaded_by === $user->id || $user->hasRole('Admin Maintenance');
+    }
 }

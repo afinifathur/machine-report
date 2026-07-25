@@ -108,4 +108,10 @@ Route::middleware('auth')->group(function () {
     Route::post('procurements/{procurement}/confirm-arrival', [ProcurementCaseController::class, 'confirmArrival'])->name('procurements.confirm-arrival');
     Route::post('procurements/{procurement}/confirm-pickup', [ProcurementCaseController::class, 'confirmPickup'])->name('procurements.confirm-pickup');
     Route::post('procurements/{procurement}/cancel', [ProcurementCaseController::class, 'cancel'])->name('procurements.cancel');
+    Route::post('procurements/{procurement}/reject', [ProcurementCaseController::class, 'reject'])->name('procurements.reject');
+    
+    // Attachment routes
+    Route::post('procurements/{procurement}/attachments', [ProcurementCaseController::class, 'uploadAttachment'])->name('procurements.attachments.upload');
+    Route::delete('procurements/attachments/{attachment}', [ProcurementCaseController::class, 'deleteAttachment'])->name('procurements.attachments.destroy');
+    Route::get('procurements/attachments/{attachment}/download', [ProcurementCaseController::class, 'downloadAttachment'])->name('procurements.attachments.download');
 });

@@ -25,5 +25,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \Illuminate\Support\Facades\Blade::component('layouts.app', 'layouts.app');
+        \Illuminate\Support\Facades\Gate::policy(
+            \App\Models\ProcurementAttachment::class,
+            \App\Policies\ProcurementCasePolicy::class
+        );
     }
 }

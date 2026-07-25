@@ -22,15 +22,143 @@ class ProcurementCaseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', ProcurementCase::class);
 
-        $cases = ProcurementCase::with(['machine', 'creator'])
-            ->latest()
-            ->paginate(20);
+        $query = ProcurementCase::with(['machine', 'creator', 'category']);
 
-        return view('procurements.index', compact('cases'));
+        // Search (Global search matching Case Number, Item Name, Machine Name, Category Name, Reason, Current Owner)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('case_number', 'like', "%{$search}%")
+                  ->orWhere('item_name', 'like', "%{$search}%")
+                  ->orWhere('current_owner', 'like', "%{$search}%")
+                  ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhereHas('machine', function ($mq) use ($search) {
+                      $mq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('category', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filtering by Status
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Filtering by Status Group (from summary card clicks)
+        if ($request->filled('status_group')) {
+            $group = $request->input('status_group');
+            if ($group === 'draft') {
+                $query->where('status', \App\Enums\ProcurementStatus::DRAFT);
+            } elseif ($group === 'pending_approval') {
+                $query->whereIn('status', [
+                    \App\Enums\ProcurementStatus::PENDING_KABAG,
+                    \App\Enums\ProcurementStatus::PENDING_DIR,
+                    \App\Enums\ProcurementStatus::NEED_INFO
+                ]);
+            } elseif ($group === 'processing') {
+                $query->whereIn('status', [
+                    \App\Enums\ProcurementStatus::PROCESSING,
+                    \App\Enums\ProcurementStatus::WAITING_DELIVERY
+                ]);
+            } elseif ($group === 'ready_pickup') {
+                $query->where('status', \App\Enums\ProcurementStatus::READY_TO_PICKUP);
+            } elseif ($group === 'closed') {
+                $query->whereIn('status', [
+                    \App\Enums\ProcurementStatus::CLOSED,
+                    \App\Enums\ProcurementStatus::CANCELLED
+                ]);
+            }
+        }
+
+        // Filtering by Urgency
+        if ($request->filled('urgency')) {
+            $query->where('urgency', $request->input('urgency'));
+        }
+
+        // Filtering by Category
+        if ($request->filled('category')) {
+            $query->where('procurement_category_id', $request->input('category'));
+        }
+
+        // Filtering by Current Owner
+        if ($request->filled('owner')) {
+            $query->where('current_owner', $request->input('owner'));
+        }
+
+        // Filtering by My Cases (checks if current owner matches logged in user's roles)
+        if ($request->boolean('my_cases')) {
+            $user = auth()->user();
+            if ($user) {
+                $userRoles = $user->roles->pluck('name')->toArray();
+                $query->whereIn('current_owner', $userRoles);
+            }
+        }
+
+        // Summary Counts (calculating dynamic card counts based on search / other filters applied)
+        $countQuery = ProcurementCase::query();
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $countQuery->where(function ($q) use ($search) {
+                $q->where('case_number', 'like', "%{$search}%")
+                  ->orWhere('item_name', 'like', "%{$search}%")
+                  ->orWhere('current_owner', 'like', "%{$search}%")
+                  ->orWhere('reason', 'like', "%{$search}%")
+                  ->orWhereHas('machine', function ($mq) use ($search) {
+                      $mq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('category', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+        if ($request->filled('urgency')) {
+            $countQuery->where('urgency', $request->input('urgency'));
+        }
+        if ($request->filled('category')) {
+            $countQuery->where('procurement_category_id', $request->input('category'));
+        }
+        if ($request->filled('owner')) {
+            $countQuery->where('current_owner', $request->input('owner'));
+        }
+        if ($request->boolean('my_cases')) {
+            $user = auth()->user();
+            if ($user) {
+                $userRoles = $user->roles->pluck('name')->toArray();
+                $countQuery->whereIn('current_owner', $userRoles);
+            }
+        }
+
+        $draftCount = (clone $countQuery)->where('status', \App\Enums\ProcurementStatus::DRAFT)->count();
+        $pendingCount = (clone $countQuery)->whereIn('status', [
+            \App\Enums\ProcurementStatus::PENDING_KABAG,
+            \App\Enums\ProcurementStatus::PENDING_DIR,
+            \App\Enums\ProcurementStatus::NEED_INFO
+        ])->count();
+        $processingCount = (clone $countQuery)->whereIn('status', [
+            \App\Enums\ProcurementStatus::PROCESSING,
+            \App\Enums\ProcurementStatus::WAITING_DELIVERY
+        ])->count();
+        $readyCount = (clone $countQuery)->where('status', \App\Enums\ProcurementStatus::READY_TO_PICKUP)->count();
+        $closedCount = (clone $countQuery)->whereIn('status', [
+            \App\Enums\ProcurementStatus::CLOSED,
+            \App\Enums\ProcurementStatus::CANCELLED
+        ])->count();
+
+        $cases = $query->latest()->paginate(20)->withQueryString();
+
+        $categories = \App\Models\ProcurementCategory::where('is_active', true)->orderBy('name')->get();
+        $owners = ProcurementCase::select('current_owner')->distinct()->pluck('current_owner');
+
+        return view('procurements.index', compact(
+            'cases', 'categories', 'owners',
+            'draftCount', 'pendingCount', 'processingCount', 'readyCount', 'closedCount'
+        ));
     }
 
     /**
@@ -41,8 +169,9 @@ class ProcurementCaseController extends Controller
         $this->authorize('create', ProcurementCase::class);
 
         $machines = Machine::orderBy('name')->get();
+        $categories = \App\Models\ProcurementCategory::where('is_active', true)->orderBy('name')->get();
 
-        return view('procurements.create', compact('machines'));
+        return view('procurements.create', compact('machines', 'categories'));
     }
 
     /**
@@ -53,11 +182,17 @@ class ProcurementCaseController extends Controller
         $this->authorize('create', ProcurementCase::class);
 
         $validated = $request->validate([
-            'machine_id' => 'required|exists:machines,id',
-            'item_name' => 'required|string|max:255',
-            'urgency' => 'required|string|in:normal,urgent,emergency',
-            'target_needed_date' => 'required|date',
-            'description' => 'required|string',
+            'machine_id'                => 'required|exists:machines,id',
+            'item_name'                 => 'required|string|max:255',
+            'procurement_category_id'   => 'required|exists:procurement_categories,id',
+            'urgency'                   => 'required|string|in:normal,urgent,emergency',
+            'target_needed_date'        => 'required|date',
+            'machine_down'              => 'required|boolean',
+            'description'               => 'required|string',
+            'reason'                    => 'required|string',
+            // Optional attachments on create
+            'attachments'               => 'nullable|array|max:10',
+            'attachments.*'             => 'file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
         ]);
 
         $user = auth()->user() ?? \App\Models\User::first();
@@ -67,6 +202,39 @@ class ProcurementCaseController extends Controller
         }
 
         $case = $this->workflowService->createDraft($validated, $user);
+
+        // Save any attachments uploaded together with the draft
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $mimeType     = $file->getMimeType();
+                $originalName = $file->getClientOriginalName();
+
+                if (str_starts_with($mimeType, 'image/')) {
+                    $extension = $file->getClientOriginalExtension() ?: 'jpg';
+                    $storedFilename   = \Illuminate\Support\Str::random(40) . '.' . $extension;
+                    $destinationPath  = \Illuminate\Support\Facades\Storage::disk('public')->path('procurements/' . $storedFilename);
+
+                    if (!file_exists(dirname($destinationPath))) {
+                        mkdir(dirname($destinationPath), 0755, true);
+                    }
+
+                    $this->resizeAndCompressImage($file->getRealPath(), $destinationPath, $mimeType);
+                    $fileSize = filesize($destinationPath);
+                } else {
+                    $path           = $file->store('procurements', 'public');
+                    $storedFilename = basename($path);
+                    $fileSize       = $file->getSize();
+                }
+
+                $case->attachments()->create([
+                    'uploaded_by'       => $user->id,
+                    'original_filename' => $originalName,
+                    'stored_filename'   => $storedFilename,
+                    'mime_type'         => $mimeType,
+                    'file_size'         => $fileSize,
+                ]);
+            }
+        }
 
         return redirect()->route('procurements.show', $case->id)
             ->with('success', 'Draft pengadaan berhasil dibuat.');
@@ -90,8 +258,9 @@ class ProcurementCaseController extends Controller
         $this->authorize('update', $procurement);
 
         $machines = Machine::orderBy('name')->get();
+        $categories = \App\Models\ProcurementCategory::where('is_active', true)->orderBy('name')->get();
 
-        return view('procurements.edit', compact('procurement', 'machines'));
+        return view('procurements.edit', compact('procurement', 'machines', 'categories'));
     }
 
     /**
@@ -104,13 +273,23 @@ class ProcurementCaseController extends Controller
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'item_name' => 'required|string|max:255',
+            'procurement_category_id' => 'required|exists:procurement_categories,id',
             'urgency' => 'required|string|in:normal,urgent,emergency',
             'target_needed_date' => 'required|date',
+            'machine_down' => 'required|boolean',
             'description' => 'required|string',
+            'reason' => 'required|string',
         ]);
 
         try {
             $this->workflowService->updateDraft($procurement, $validated);
+
+            if ($request->input('action') === 'submit') {
+                $this->workflowService->submit($procurement);
+                return redirect()->route('procurements.show', $procurement->id)
+                    ->with('success', 'Draft pengadaan berhasil diperbarui dan diajukan ke Kabag Maintenance.');
+            }
+
             return redirect()->route('procurements.show', $procurement->id)
                 ->with('success', 'Draft pengadaan berhasil diperbarui.');
         } catch (\Exception $e) {
@@ -223,9 +402,12 @@ class ProcurementCaseController extends Controller
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'item_name' => 'required|string|max:255',
+            'procurement_category_id' => 'required|exists:procurement_categories,id',
             'urgency' => 'required|string|in:normal,urgent,emergency',
             'target_needed_date' => 'required|date',
+            'machine_down' => 'required|boolean',
             'description' => 'required|string',
+            'reason' => 'required|string',
         ]);
 
         try {
@@ -311,6 +493,206 @@ class ProcurementCaseController extends Controller
             $this->workflowService->cancel($procurement, $validated['reason'], $user);
             return redirect()->route('procurements.show', $procurement->id)
                 ->with('success', 'Permintaan pengadaan telah dibatalkan.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Upload an attachment for the case.
+     */
+    public function uploadAttachment(Request $request, ProcurementCase $procurement)
+    {
+        $this->authorize('uploadAttachment', $procurement);
+
+        if ($procurement->attachments()->count() >= 10) {
+            return redirect()->back()->withErrors(['file' => 'Maksimal lampiran adalah 10 file per kasus.']);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $mimeType = $file->getMimeType();
+        $originalName = $file->getClientOriginalName();
+
+        $user = auth()->user() ?? \App\Models\User::first();
+
+        // Check if it's an image
+        if (str_starts_with($mimeType, 'image/')) {
+            $extension = $file->getClientOriginalExtension();
+            if (empty($extension)) {
+                $extension = match ($mimeType) {
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                    default => 'jpg'
+                };
+            }
+            $storedFilename = \Illuminate\Support\Str::random(40) . '.' . $extension;
+            $destinationPath = \Illuminate\Support\Facades\Storage::disk('public')->path('procurements/' . $storedFilename);
+
+            if (!file_exists(dirname($destinationPath))) {
+                mkdir(dirname($destinationPath), 0755, true);
+            }
+
+            // Resize and compress
+            $this->resizeAndCompressImage($file->getRealPath(), $destinationPath, $mimeType);
+            
+            $fileSize = filesize($destinationPath);
+        } else {
+            // PDF or other non-image files
+            $path = $file->store('procurements', 'public');
+            $storedFilename = basename($path);
+            $fileSize = $file->getSize();
+        }
+
+        $procurement->attachments()->create([
+            'uploaded_by' => $user->id,
+            'original_filename' => $originalName,
+            'stored_filename' => $storedFilename,
+            'mime_type' => $mimeType,
+            'file_size' => $fileSize,
+        ]);
+
+        return redirect()->route('procurements.show', $procurement->id)
+            ->with('success', 'File lampiran berhasil diunggah.');
+    }
+
+    /**
+     * Helper to resize and compress image using GD.
+     */
+    private function resizeAndCompressImage($sourcePath, $destinationPath, $mimeType)
+    {
+        if (!extension_loaded('gd')) {
+            copy($sourcePath, $destinationPath);
+            return;
+        }
+
+        // Get original dimensions
+        list($origWidth, $origHeight) = @getimagesize($sourcePath);
+        if (!$origWidth || !$origHeight) {
+            copy($sourcePath, $destinationPath);
+            return;
+        }
+
+        // Resize maximum dimension to 1600 px
+        $maxDimension = 1600;
+        $width = $origWidth;
+        $height = $origHeight;
+
+        if ($origWidth > $maxDimension || $origHeight > $maxDimension) {
+            if ($origWidth > $origHeight) {
+                $width = $maxDimension;
+                $height = intval($origHeight * ($maxDimension / $origWidth));
+            } else {
+                $height = $maxDimension;
+                $width = intval($origWidth * ($maxDimension / $origHeight));
+            }
+        }
+
+        // Load image based on mime type
+        $srcImage = null;
+        try {
+            if ($mimeType === 'image/jpeg' || $mimeType === 'image/jpg') {
+                $srcImage = @imagecreatefromjpeg($sourcePath);
+            } elseif ($mimeType === 'image/png') {
+                $srcImage = @imagecreatefrompng($sourcePath);
+            } elseif ($mimeType === 'image/webp') {
+                $srcImage = @imagecreatefromwebp($sourcePath);
+            }
+        } catch (\Exception $e) {
+            $srcImage = null;
+        }
+
+        if (!$srcImage) {
+            copy($sourcePath, $destinationPath);
+            return;
+        }
+
+        // Create new blank image
+        $dstImage = imagecreatetruecolor($width, $height);
+
+        // Preserve transparency for PNG and WebP
+        if ($mimeType === 'image/png' || $mimeType === 'image/webp') {
+            imagealphablending($dstImage, false);
+            imagesavealpha($dstImage, true);
+            $transparent = imagecolorallocatealpha($dstImage, 255, 255, 255, 127);
+            imagefilledrectangle($dstImage, 0, 0, $width, $height, $transparent);
+        }
+
+        // Copy and resize
+        imagecopyresampled($dstImage, $srcImage, 0, 0, 0, 0, $width, $height, $origWidth, $origHeight);
+
+        // Compress and save
+        if ($mimeType === 'image/jpeg' || $mimeType === 'image/jpg') {
+            imagejpeg($dstImage, $destinationPath, 75); // 75 quality is optimal
+        } elseif ($mimeType === 'image/png') {
+            // PNG compression level (0-9)
+            imagepng($dstImage, $destinationPath, 7);
+        } elseif ($mimeType === 'image/webp') {
+            imagewebp($dstImage, $destinationPath, 75);
+        } else {
+            copy($sourcePath, $destinationPath);
+        }
+
+        // Free memory
+        imagedestroy($srcImage);
+        imagedestroy($dstImage);
+    }
+
+    /**
+     * Delete an attachment.
+     */
+    public function deleteAttachment(\App\Models\ProcurementAttachment $attachment)
+    {
+        $this->authorize('deleteAttachment', $attachment);
+
+        \Illuminate\Support\Facades\Storage::disk('public')->delete('procurements/' . $attachment->stored_filename);
+        
+        $caseId = $attachment->procurement_case_id;
+        $attachment->delete();
+
+        return redirect()->route('procurements.show', $caseId)
+            ->with('success', 'File lampiran berhasil dihapus.');
+    }
+
+    /**
+     * Download/View an attachment.
+     */
+    public function downloadAttachment(\App\Models\ProcurementAttachment $attachment)
+    {
+        $this->authorize('view', $attachment->case);
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->download(
+            'procurements/' . $attachment->stored_filename,
+            $attachment->original_filename
+        );
+    }
+
+    /**
+     * Reject a case and return to Draft.
+     */
+    public function reject(Request $request, ProcurementCase $procurement)
+    {
+        if ($procurement->status === \App\Enums\ProcurementStatus::PENDING_KABAG) {
+            $this->authorize('approveStage1', $procurement);
+        } elseif ($procurement->status === \App\Enums\ProcurementStatus::PENDING_DIR) {
+            $this->authorize('approveStage2', $procurement);
+        } else {
+            return redirect()->back()->withErrors(['error' => 'Aksi reject tidak diizinkan pada status ini.']);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        try {
+            $user = auth()->user() ?? \App\Models\User::first();
+            $this->workflowService->reject($procurement, $user, $validated['reason']);
+            return redirect()->route('procurements.show', $procurement->id)
+                ->with('success', 'Permintaan pengadaan telah ditolak dan dikembalikan ke Draft.');
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }

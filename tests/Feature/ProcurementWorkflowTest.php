@@ -147,32 +147,44 @@ class ProcurementWorkflowTest extends TestCase
         $this->assertEquals('None', $case->fresh()->current_owner);
     }
 
-    public function test_return_for_information_and_update_information_path(): void
+    public function test_rejection_by_kabag_returns_to_draft_and_resubmits(): void
     {
         $case = $this->createCaseAtStatus(ProcurementStatus::PENDING_KABAG, 'Kabag Maintenance');
 
-        // Kabag requests more info
+        // Kabag rejects the request
         $this->actingAs($this->kabagUser);
-        $response = $this->post(route('procurements.return-information', $case->id), [
-            'note' => 'Please upload a clearer nameplate photo.'
+        $response = $this->post(route('procurements.reject', $case->id), [
+            'reason' => 'Please rewrite specifications clearly.'
         ]);
         $response->assertRedirect();
-        $this->assertEquals(ProcurementStatus::NEED_INFO, $case->fresh()->status);
+        $this->assertEquals(ProcurementStatus::DRAFT, $case->fresh()->status);
         $this->assertEquals('Admin Maintenance', $case->fresh()->current_owner);
 
-        // Admin Maintenance updates and resubmits
+        // Admin Maintenance edits/updates the draft
         $this->actingAs($this->adminUser);
-        $response = $this->post(route('procurements.update-information', $case->id), [
+        $category = \App\Models\ProcurementCategory::first() ?? \App\Models\ProcurementCategory::create([
+            'name' => 'General',
+            'slug' => 'general',
+        ]);
+        
+        $response = $this->put(route('procurements.update', $case->id), [
             'machine_id' => $this->machine->id,
-            'item_name' => 'WPA 80 Reducer (Verified)',
+            'item_name' => 'WPA 80 Reducer (Revised Name)',
+            'procurement_category_id' => $category->id,
             'urgency' => 'urgent',
             'target_needed_date' => now()->addDays(3)->toDateString(),
-            'description' => 'Updated with proper nameplate serial number SN-WPA-9912.',
+            'machine_down' => 1,
+            'description' => 'Detailed description update.',
+            'reason' => 'For conveyor repair',
         ]);
+        $response->assertRedirect();
+        $this->assertEquals('WPA 80 Reducer (Revised Name)', $case->fresh()->item_name);
+
+        // Admin resubmits the case
+        $response = $this->post(route('procurements.submit', $case->id));
         $response->assertRedirect();
         $this->assertEquals(ProcurementStatus::PENDING_KABAG, $case->fresh()->status);
         $this->assertEquals('Kabag Maintenance', $case->fresh()->current_owner);
-        $this->assertEquals('WPA 80 Reducer (Verified)', $case->fresh()->item_name);
     }
 
     public function test_cancel_request_path(): void

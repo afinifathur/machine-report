@@ -16,19 +16,35 @@ class ProcurementWorkflowService
      */
     public function createDraft(array $data, User $creator): ProcurementCase
     {
-        $today = now()->format('Ymd');
-        $count = ProcurementCase::whereDate('created_at', now()->toDateString())->count() + 1;
-        $caseNumber = 'PR-' . $today . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $yearMonth = now()->format('Ym');
+        $prefix = 'PC-' . $yearMonth . '-';
+
+        // Get the maximum sequential number for the current month/year prefix (using withTrashed to prevent duplicates on soft deleted cases)
+        $lastCase = ProcurementCase::withTrashed()
+            ->where('case_number', 'like', $prefix . '%')
+            ->orderBy('case_number', 'desc')
+            ->first();
+
+        $nextNumber = 1;
+        if ($lastCase) {
+            $lastNumStr = substr($lastCase->case_number, -4);
+            $nextNumber = (int)$lastNumStr + 1;
+        }
+
+        $caseNumber = $prefix . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
         return ProcurementCase::create([
             'case_number' => $caseNumber,
             'machine_id' => $data['machine_id'],
+            'procurement_category_id' => $data['procurement_category_id'] ?? null,
             'item_name' => $data['item_name'],
             'urgency' => $data['urgency'] ?? 'normal',
             'status' => ProcurementStatus::DRAFT,
             'current_owner' => 'Admin Maintenance',
             'description' => $data['description'],
+            'reason' => $data['reason'] ?? null,
             'target_needed_date' => $data['target_needed_date'],
+            'machine_down' => filter_var($data['machine_down'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'created_by' => $creator->id,
         ]);
     }
@@ -44,10 +60,13 @@ class ProcurementWorkflowService
 
         $case->update([
             'machine_id' => $data['machine_id'],
+            'procurement_category_id' => $data['procurement_category_id'] ?? $case->procurement_category_id,
             'item_name' => $data['item_name'],
             'urgency' => $data['urgency'] ?? $case->urgency,
             'description' => $data['description'],
+            'reason' => $data['reason'] ?? $case->reason,
             'target_needed_date' => $data['target_needed_date'],
+            'machine_down' => isset($data['machine_down']) ? filter_var($data['machine_down'], FILTER_VALIDATE_BOOLEAN) : $case->machine_down,
         ]);
 
         return $case;
@@ -184,10 +203,13 @@ class ProcurementWorkflowService
 
         $case->update([
             'machine_id' => $data['machine_id'],
+            'procurement_category_id' => $data['procurement_category_id'] ?? $case->procurement_category_id,
             'item_name' => $data['item_name'],
             'urgency' => $data['urgency'] ?? $case->urgency,
             'description' => $data['description'],
+            'reason' => $data['reason'] ?? $case->reason,
             'target_needed_date' => $data['target_needed_date'],
+            'machine_down' => isset($data['machine_down']) ? filter_var($data['machine_down'], FILTER_VALIDATE_BOOLEAN) : $case->machine_down,
             'status' => ProcurementStatus::PENDING_KABAG,
             'current_owner' => 'Kabag Maintenance',
         ]);
@@ -282,6 +304,45 @@ class ProcurementWorkflowService
         $case->update([
             'status' => ProcurementStatus::CANCELLED,
             'current_owner' => 'None',
+        ]);
+
+        return $case;
+    }
+
+    /**
+     * Reject Case (returns back to DRAFT and Owner back to Admin Maintenance).
+     */
+    public function reject(ProcurementCase $case, User $user, string $note): ProcurementCase
+    {
+        $validStatuses = [
+            ProcurementStatus::PENDING_KABAG,
+            ProcurementStatus::PENDING_DIR,
+        ];
+
+        if (!in_array($case->status, $validStatuses)) {
+            throw new \Exception('Aksi reject hanya boleh dijalankan jika status PENDING KABAG atau PENDING DIR.');
+        }
+
+        if (empty(trim($note))) {
+            throw new \Exception('Catatan penolakan (Review Note) wajib diisi.');
+        }
+
+        $stage = match ($case->status) {
+            ProcurementStatus::PENDING_KABAG => 1,
+            ProcurementStatus::PENDING_DIR => 2,
+        };
+
+        Approval::create([
+            'procurement_case_id' => $case->id,
+            'user_id' => $user->id,
+            'stage' => $stage,
+            'decision' => ApprovalDecision::REJECTED,
+            'note' => $note,
+        ]);
+
+        $case->update([
+            'status' => ProcurementStatus::DRAFT,
+            'current_owner' => 'Admin Maintenance',
         ]);
 
         return $case;

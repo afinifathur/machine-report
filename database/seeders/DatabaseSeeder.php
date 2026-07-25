@@ -27,6 +27,9 @@ class DatabaseSeeder extends Seeder
         // Seed Roles and Permissions
         $this->call(PermissionSeeder::class);
 
+        // Seed Procurement Categories
+        $this->call(ProcurementCategorySeeder::class);
+
         // Seed Master Departments
         $depts = [
             ['code' => 'MACHINING', 'name' => 'Machining', 'sort_order' => 10],

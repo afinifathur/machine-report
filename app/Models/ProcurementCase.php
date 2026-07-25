@@ -17,12 +17,15 @@ class ProcurementCase extends Model
     protected $fillable = [
         'case_number',
         'machine_id',
+        'procurement_category_id',
         'item_name',
         'urgency',
         'status',
         'current_owner',
         'description',
+        'reason',
         'target_needed_date',
+        'machine_down',
         'vendor_name',
         'po_number',
         'po_date',
@@ -37,12 +40,18 @@ class ProcurementCase extends Model
             'urgency' => ProcurementUrgency::class,
             'target_needed_date' => 'date',
             'po_date' => 'date',
+            'machine_down' => 'boolean',
         ];
     }
 
     public function machine(): BelongsTo
     {
         return $this->belongsTo(Machine::class);
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ProcurementCategory::class, 'procurement_category_id');
     }
 
     public function creator(): BelongsTo
@@ -53,5 +62,10 @@ class ProcurementCase extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);
+    }
+
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ProcurementAttachment::class, 'procurement_case_id');
     }
 }
