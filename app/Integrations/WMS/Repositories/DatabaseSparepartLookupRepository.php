@@ -90,6 +90,13 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                 ->get()
                 ->groupBy('item_variant_id');
 
+            // 4. Fetch averages and trends from the read-only view item_variant_statistics
+            $statistics = DB::connection($this->connectionName)
+                ->table('item_variant_statistics')
+                ->whereIn('item_variant_id', $variantIds)
+                ->get()
+                ->keyBy('item_variant_id');
+
             // Map results into DTOs
             foreach ($variants as $variant) {
                 $vId = $variant->variant_id;
@@ -115,6 +122,12 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                     $category = 'Lubricant';
                 }
 
+                $stats = $statistics->get($vId);
+                $weeklyAverage = $stats ? (float) $stats->weekly_average : null;
+                $monthlyAverage = $stats ? (float) $stats->monthly_average : null;
+                $sixMonthAverage = $stats ? (float) $stats->six_month_average : null;
+                $trend = $stats ? $stats->trend : null;
+
                 $result[$code] = SparepartItemDTO::fromRecord(
                     erpCode: $code,
                     variantId: $vId,
@@ -125,8 +138,12 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                     location: $locations,
                     supplier: $primarySupplier,
                     stock: $stock,
-                    weeklyAverage: null,
-                    category: $category
+                    weeklyAverage: $weeklyAverage,
+                    category: $category,
+                    mappingId: null,
+                    monthlyAverage: $monthlyAverage,
+                    sixMonthAverage: $sixMonthAverage,
+                    trend: $trend
                 );
             }
 

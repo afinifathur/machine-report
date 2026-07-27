@@ -109,7 +109,6 @@ class SparepartIntegrationController extends Controller
         // ---------------------------------------------------------
         $search = $request->input('search');
         $machineFilter = $request->input('machine');
-        $categoryFilter = $request->input('category');
         $statusFilter = $request->input('status');
         $criticalityFilter = $request->input('criticality');
 
@@ -129,12 +128,6 @@ class SparepartIntegrationController extends Controller
                     }
                 }
                 return false;
-            });
-        }
-
-        if (!empty($categoryFilter)) {
-            $items = array_filter($items, function ($item) use ($categoryFilter) {
-                return strtolower($item['category']) === strtolower($categoryFilter);
             });
         }
 
@@ -177,7 +170,6 @@ class SparepartIntegrationController extends Controller
         // E. WIDGET & METRICS DATA
         // ---------------------------------------------------------
         $allMachines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('name')->get();
-        $categories = collect($items)->pluck('category')->unique()->filter()->values()->toArray();
 
         // Sync Observability
         $lastSyncTime = date('Y-m-d H:i') . ' WIB';
@@ -190,7 +182,6 @@ class SparepartIntegrationController extends Controller
             'mappedMachinesCount',
             'unmappedMachinesCount',
             'allMachines',
-            'categories',
             'lastSyncTime',
             'dataSourceMode'
         ));

@@ -18,7 +18,10 @@ class SparepartItemDTO
         public readonly ?string $category = 'General',
         public readonly bool $isAvailable = false,
         public readonly bool $isOffline = false,
-        public readonly ?int $mappingId = null
+        public readonly ?int $mappingId = null,
+        public readonly ?float $monthlyAverage = null,
+        public readonly ?float $sixMonthAverage = null,
+        public readonly ?string $trend = null
     ) {}
 
     /**
@@ -36,7 +39,10 @@ class SparepartItemDTO
         int $stock,
         ?float $weeklyAverage = null,
         ?string $category = 'General',
-        ?int $mappingId = null
+        ?int $mappingId = null,
+        ?float $monthlyAverage = null,
+        ?float $sixMonthAverage = null,
+        ?string $trend = null
     ): self {
         return new self(
             erpCode: $erpCode,
@@ -52,7 +58,10 @@ class SparepartItemDTO
             category: $category ?: 'General',
             isAvailable: $stock > 0,
             isOffline: false,
-            mappingId: $mappingId
+            mappingId: $mappingId,
+            monthlyAverage: $monthlyAverage,
+            sixMonthAverage: $sixMonthAverage,
+            trend: $trend
         );
     }
 
@@ -75,7 +84,10 @@ class SparepartItemDTO
             category: 'General',
             isAvailable: false,
             isOffline: $isOffline,
-            mappingId: $mappingId
+            mappingId: $mappingId,
+            monthlyAverage: null,
+            sixMonthAverage: null,
+            trend: null
         );
     }
 
@@ -101,6 +113,9 @@ class SparepartItemDTO
             'is_available' => $this->isAvailable,
             'is_offline' => $this->isOffline,
             'mapping_id' => $this->mappingId,
+            'monthly_average' => $this->monthlyAverage,
+            'six_month_average' => $this->sixMonthAverage,
+            'trend' => $this->trend,
         ];
     }
 }

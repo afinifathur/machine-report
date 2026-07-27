@@ -24,7 +24,13 @@ class WMSIntegrationTest extends TestCase
             barcode: '899123456789',
             location: 'Rack A-01',
             supplier: 'PT Bearing Jaya',
-            stock: 15
+            stock: 15,
+            weeklyAverage: 1.5,
+            category: 'General',
+            mappingId: null,
+            monthlyAverage: 2.5,
+            sixMonthAverage: 3.5,
+            trend: 'Increasing'
         );
 
         $this->assertEquals('PART-001', $dto->erpCode);
@@ -32,6 +38,10 @@ class WMSIntegrationTest extends TestCase
         $this->assertTrue($dto->isAvailable);
         $this->assertFalse($dto->isOffline);
         $this->assertEquals('Available', $dto->toArray()['availability']);
+        $this->assertEquals(1.5, $dto->weeklyAverage);
+        $this->assertEquals(2.5, $dto->monthlyAverage);
+        $this->assertEquals(3.5, $dto->sixMonthAverage);
+        $this->assertEquals('Increasing', $dto->trend);
     }
 
     public function test_offline_fallback_dto(): void

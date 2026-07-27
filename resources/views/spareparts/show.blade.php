@@ -61,86 +61,104 @@
         <!-- Right: Stocks, Metrics, Machines (2/3 width) -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- Stocks & Threshold Metrics Card -->
-            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-sm">
-                <h3 class="font-headline-sm text-headline-sm font-bold flex items-center gap-2 mb-6">
+            <!-- Stock & Usage Metrics (Passport Right Panel) -->
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-none">
+                <h3 class="font-headline-sm text-headline-sm font-bold flex items-center gap-2 mb-3.5 pb-2 border-b border-outline-variant">
                     <span class="material-symbols-outlined text-primary" data-icon="bar_chart">bar_chart</span>
-                    Stock Monitoring & Risk Indicators
+                    Stock Monitoring & Usage Metrics
                 </h3>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                    <!-- Current Stock -->
-                    <div class="p-4 bg-surface-container-low border border-outline-variant rounded-xl text-center">
-                        <span class="block text-body-sm text-on-surface-variant font-medium">Stok Saat Ini (WMS)</span>
-                        <span class="block text-[28px] font-extrabold text-on-surface mt-1 leading-none">
-                            {{ $dto->stock }}
-                        </span>
-                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mt-1">
-                            {{ $dto->unit }}
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2.5 text-body-sm">
+                    <!-- Stock -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Stock</span>
+                        <span class="font-bold text-on-surface">{{ $dto->stock }} {{ $dto->unit }}</span>
+                    </div>
+
+                    <!-- Weekly (28d) -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Weekly (28d)</span>
+                        <span class="font-bold text-on-surface">
+                            {{ !is_null($dto->weeklyAverage) ? number_format($dto->weeklyAverage, 2) : '-' }}
                         </span>
                     </div>
 
-                    <!-- Weekly Average -->
-                    <div class="p-4 bg-surface-container-low border border-outline-variant rounded-xl text-center">
-                        <span class="block text-body-sm text-on-surface-variant font-medium">Rerata Mingguan</span>
-                        <span class="block text-[28px] font-extrabold text-on-surface mt-1 leading-none">
-                            {{ !is_null($dto->weeklyAverage) ? number_format($dto->weeklyAverage, 1) : '-' }}
-                        </span>
-                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mt-1">
-                            Usage / Week
+                    <!-- Monthly (90d) -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Monthly (90d)</span>
+                        <span class="font-bold text-on-surface">
+                            {{ !is_null($dto->monthlyAverage) ? number_format($dto->monthlyAverage, 2) : '-' }}
                         </span>
                     </div>
 
-                    <!-- Minimum Stock -->
-                    <div class="p-4 bg-surface-container-low border border-outline-variant rounded-xl text-center">
-                        <span class="block text-body-sm text-on-surface-variant font-medium">Minimum Stock</span>
-                        <span class="block text-[28px] font-extrabold mt-1 leading-none {{ !is_null($statusInfo['min_stock']) && $dto->stock < $statusInfo['min_stock'] ? 'text-red-600' : 'text-on-surface' }}">
+                    <!-- 6 Month (180d) -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">6 Month (180d)</span>
+                        <span class="font-bold text-on-surface">
+                            {{ !is_null($dto->sixMonthAverage) ? number_format($dto->sixMonthAverage, 2) : '-' }}
+                        </span>
+                    </div>
+
+                    <!-- Trend -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Trend</span>
+                        @if($dto->trend === 'Increasing')
+                            <span class="font-bold text-green-600">↑ Increasing</span>
+                        @elseif($dto->trend === 'Decreasing')
+                            <span class="font-bold text-red-650">↓ Decreasing</span>
+                        @elseif($dto->trend === 'Stable')
+                            <span class="font-bold text-on-surface">→ Stable</span>
+                        @else
+                            <span class="font-medium text-on-surface-variant">-</span>
+                        @endif
+                    </div>
+
+                    <!-- Minimum -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Minimum</span>
+                        <span class="font-bold {{ !is_null($statusInfo['min_stock']) && $dto->stock < $statusInfo['min_stock'] ? 'text-red-650' : 'text-on-surface' }}">
                             {{ !is_null($statusInfo['min_stock']) ? number_format($statusInfo['min_stock'], 1) : '-' }}
                         </span>
-                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mt-1">
-                            Threshold
-                        </span>
                     </div>
 
-                    <!-- Target Stock -->
-                    <div class="p-4 bg-surface-container-low border border-outline-variant rounded-xl text-center">
-                        <span class="block text-body-sm text-on-surface-variant font-medium">Target Stock</span>
-                        <span class="block text-[28px] font-extrabold text-on-surface mt-1 leading-none">
+                    <!-- Target -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Target</span>
+                        <span class="font-bold text-on-surface">
                             {{ !is_null($statusInfo['target_stock']) ? number_format($statusInfo['target_stock'], 1) : '-' }}
                         </span>
-                        <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block mt-1">
-                            Optimal Cap
-                        </span>
                     </div>
-                </div>
 
-                <!-- Parameters Table -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-surface-bright border border-outline-variant rounded-xl text-body-sm">
-                    <div>
-                        <span class="text-on-surface-variant font-medium block">Lead Time Pengadaan:</span>
-                        <span class="font-bold text-on-surface text-base mt-1 block">{{ $maxLeadTime }} Hari</span>
+                    <!-- Lead Time -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Lead Time</span>
+                        <span class="font-bold text-on-surface">{{ $maxLeadTime }} Hari</span>
                     </div>
-                    <div>
-                        <span class="text-on-surface-variant font-medium block">Criticality Kelas:</span>
+
+                    <!-- Coverage -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Coverage</span>
+                        <span class="font-bold text-primary">{{ $mappings->count() }} Mesin</span>
+                    </div>
+
+                    <!-- Criticality -->
+                    <div class="flex justify-between items-center py-1 border-b border-outline-variant border-dashed">
+                        <span class="text-on-surface-variant font-medium">Criticality</span>
                         @php
                             $critLabel = match($criticalityVal) {
-                                'A' => 'Kelas A (Mesin Mati)',
-                                'B' => 'Kelas B (Terganggu)',
-                                default => 'Kelas C (Kurang Kritis)'
+                                'A' => 'Kelas A',
+                                'B' => 'Kelas B',
+                                default => 'Kelas C'
                             };
                         @endphp
-                        <span class="font-bold text-on-surface text-base mt-1 block uppercase">{{ $critLabel }}</span>
-                    </div>
-                    <div>
-                        <span class="text-on-surface-variant font-medium block">Coverage Mesin:</span>
-                        <span class="font-bold text-primary text-base mt-1 block">{{ $mappings->count() }} Mesin Terhubung</span>
+                        <span class="font-bold text-on-surface uppercase">{{ $critLabel }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Connected Machines Section -->
-            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-sm">
-                <h3 class="font-headline-sm text-headline-sm font-bold flex items-center gap-2 mb-4">
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-none">
+                <h3 class="font-headline-sm text-headline-sm font-bold flex items-center gap-2 mb-3">
                     <span class="material-symbols-outlined text-primary" data-icon="precision_manufacturing">precision_manufacturing</span>
                     Digunakan oleh Mesin (Coverage)
                 </h3>

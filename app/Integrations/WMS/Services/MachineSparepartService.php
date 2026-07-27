@@ -62,7 +62,10 @@ class MachineSparepartService
                 category: $dto->category,
                 isAvailable: $dto->isAvailable,
                 isOffline: $dto->isOffline,
-                mappingId: $required->id
+                mappingId: $required->id,
+                monthlyAverage: $dto->monthlyAverage,
+                sixMonthAverage: $dto->sixMonthAverage,
+                trend: $dto->trend
             );
 
             // Resolve stock status badge & calculations
