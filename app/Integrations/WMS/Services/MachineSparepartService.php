@@ -40,8 +40,6 @@ class MachineSparepartService
             ->groupBy('warehouse_item_code');
 
         $wmsBaseUrl = rtrim(config('integration.wms.base_url', 'http://127.0.0.1:8000/items/'), '/') . '/';
-        $warningMax = config('integration.wms.stock_thresholds.warning_max', 5);
-
         $result = [];
 
         foreach ($requiredItems as $required) {
@@ -49,7 +47,7 @@ class MachineSparepartService
             /** @var SparepartItemDTO $dto */
             $dto = $wmsDetailsMap[$code] ?? SparepartItemDTO::offlineFallback($code, isOffline: true, mappingId: $required->id);
 
-            // Re-assign local mapping ID
+            // Re-assign local mapping ID and properties
             $dtoWithMapping = new SparepartItemDTO(
                 erpCode: $dto->erpCode,
                 variantId: $dto->variantId,
@@ -60,13 +58,15 @@ class MachineSparepartService
                 location: $dto->location,
                 supplier: $dto->supplier,
                 stock: $dto->stock,
+                weeklyAverage: $dto->weeklyAverage,
+                category: $dto->category,
                 isAvailable: $dto->isAvailable,
                 isOffline: $dto->isOffline,
                 mappingId: $required->id
             );
 
-            // Resolve stock status badge & color
-            $status = $this->resolveStockStatus($dtoWithMapping, $warningMax);
+            // Resolve stock status badge & calculations
+            $status = $this->resolveStockStatus($dtoWithMapping, $required->lead_time_days);
 
             // Resolve shared machines
             $sharedGroup = $sharedUsageRecords->get($code, collect());
@@ -86,6 +86,10 @@ class MachineSparepartService
                 'open_wms_url' => $openWmsUrl,
                 'shared_machines' => $sharedMachines,
                 'shared_count' => count($sharedMachines),
+                'qty_per_machine' => $required->qty_per_machine,
+                'lead_time_days' => $required->lead_time_days,
+                'maintenance_criticality' => $required->maintenance_criticality,
+                'notes' => $required->notes,
             ];
         }
 
@@ -93,9 +97,9 @@ class MachineSparepartService
     }
 
     /**
-     * Resolve stock status indicator, badges, and colors.
+     * Resolve stock status indicator, badges, and colors based on weekly average and lead time.
      */
-    protected function resolveStockStatus(SparepartItemDTO $dto, int $warningMax): array
+    public function resolveStockStatus(SparepartItemDTO $dto, int $leadTimeDays): array
     {
         if ($dto->isOffline) {
             return [
@@ -103,32 +107,66 @@ class MachineSparepartService
                 'label' => 'WMS Offline',
                 'badge_class' => 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600',
                 'icon' => '⚪',
+                'min_stock' => null,
+                'target_stock' => null,
             ];
         }
 
-        if ($dto->stock === 0) {
+        if (is_null($dto->weeklyAverage)) {
             return [
-                'code' => 'danger',
-                'label' => 'Out of Stock',
+                'code' => 'unknown',
+                'label' => 'Unknown',
+                'badge_class' => 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800/40 dark:text-gray-400 dark:border-gray-800',
+                'icon' => '⚪',
+                'min_stock' => null,
+                'target_stock' => null,
+            ];
+        }
+
+        $minStock = $dto->weeklyAverage * ($leadTimeDays / 7.0);
+        $targetStock = $minStock * 1.5;
+        $stock = $dto->stock;
+
+        if ($stock <= 0.5 * $minStock) {
+            return [
+                'code' => 'critical',
+                'label' => 'Critical',
                 'badge_class' => 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800',
                 'icon' => '🔴',
+                'min_stock' => $minStock,
+                'target_stock' => $targetStock,
             ];
         }
 
-        if ($dto->stock <= $warningMax) {
+        if ($stock < $minStock) {
             return [
-                'code' => 'warning',
-                'label' => 'Low Stock',
+                'code' => 'reorder',
+                'label' => 'Reorder',
                 'badge_class' => 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800',
-                'icon' => '🟡',
+                'icon' => '🟠',
+                'min_stock' => $minStock,
+                'target_stock' => $targetStock,
+            ];
+        }
+
+        if ($stock <= $targetStock) {
+            return [
+                'code' => 'healthy',
+                'label' => 'Healthy',
+                'badge_class' => 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800',
+                'icon' => '🟢',
+                'min_stock' => $minStock,
+                'target_stock' => $targetStock,
             ];
         }
 
         return [
-            'code' => 'success',
-            'label' => 'Available',
-            'badge_class' => 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800',
-            'icon' => '🟢',
+            'code' => 'overstock',
+            'label' => 'Overstock',
+            'badge_class' => 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800',
+            'icon' => '🔵',
+            'min_stock' => $minStock,
+            'target_stock' => $targetStock,
         ];
     }
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\MachineSparepartController;
+use App\Http\Controllers\SparepartIntegrationController;
 use App\Http\Controllers\MachineQrCodeController;
 use App\Http\Controllers\MachineDocumentPhotoController;
 use App\Http\Controllers\MachineDocumentLinkController;
@@ -60,6 +61,7 @@ Route::middleware('auth')->group(function () {
     // Machine Spareparts Mapping
     Route::get('/machines/{machine}/spareparts/search', [MachineSparepartController::class, 'search'])->name('machines.spareparts.search');
     Route::post('/machines/{machine}/spareparts', [MachineSparepartController::class, 'store'])->name('machines.spareparts.store');
+    Route::put('/machines/{machine}/spareparts/{mapping}', [MachineSparepartController::class, 'update'])->name('machines.spareparts.update');
     Route::delete('/machines/{machine}/spareparts/{mapping}', [MachineSparepartController::class, 'destroy'])->name('machines.spareparts.destroy');
 
     // Maintenance Management
@@ -73,9 +75,9 @@ Route::middleware('auth')->group(function () {
     })->name('breakdowns.index');
 
     // Spareparts Integration
-    Route::get('/spareparts', function () {
-        return view('spareparts.index');
-    })->name('spareparts.index');
+    Route::get('/spareparts', [SparepartIntegrationController::class, 'index'])->name('spareparts.index');
+    Route::get('/spareparts/unmapped-machines', [SparepartIntegrationController::class, 'unmappedMachines'])->name('spareparts.unmapped-machines');
+    Route::get('/spareparts/{code}', [SparepartIntegrationController::class, 'show'])->name('spareparts.show');
 
     // Planning
     Route::get('/planning', [MaintenancePlanController::class, 'index'])->name('planning.index');

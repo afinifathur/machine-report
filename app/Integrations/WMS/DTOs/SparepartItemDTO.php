@@ -14,6 +14,8 @@ class SparepartItemDTO
         public readonly ?string $location = '-',
         public readonly ?string $supplier = '-',
         public readonly int $stock = 0,
+        public readonly ?float $weeklyAverage = null,
+        public readonly ?string $category = 'General',
         public readonly bool $isAvailable = false,
         public readonly bool $isOffline = false,
         public readonly ?int $mappingId = null
@@ -32,6 +34,8 @@ class SparepartItemDTO
         ?string $location,
         ?string $supplier,
         int $stock,
+        ?float $weeklyAverage = null,
+        ?string $category = 'General',
         ?int $mappingId = null
     ): self {
         return new self(
@@ -44,6 +48,8 @@ class SparepartItemDTO
             location: $location ?: '-',
             supplier: $supplier ?: '-',
             stock: max(0, $stock),
+            weeklyAverage: $weeklyAverage,
+            category: $category ?: 'General',
             isAvailable: $stock > 0,
             isOffline: false,
             mappingId: $mappingId
@@ -65,6 +71,8 @@ class SparepartItemDTO
             location: 'Unknown',
             supplier: 'Unknown',
             stock: 0,
+            weeklyAverage: null,
+            category: 'General',
             isAvailable: false,
             isOffline: $isOffline,
             mappingId: $mappingId
@@ -87,6 +95,8 @@ class SparepartItemDTO
             'location' => $this->location,
             'supplier' => $this->supplier,
             'stock' => $this->stock,
+            'weekly_average' => $this->weeklyAverage,
+            'category' => $this->category,
             'availability' => $this->isOffline ? 'WMS Offline' : ($this->isAvailable ? 'Available' : 'Out of Stock'),
             'is_available' => $this->isAvailable,
             'is_offline' => $this->isOffline,

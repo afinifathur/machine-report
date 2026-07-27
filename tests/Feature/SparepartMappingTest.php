@@ -73,18 +73,108 @@ class SparepartMappingTest extends TestCase
         ]);
 
         $response = $this->json('POST', route('machines.spareparts.store', $this->machine->code), [
-            'warehouse_item_code' => 'VBLT-A42'
+            'warehouse_item_code' => 'VBLT-A42',
+            'qty_per_machine' => 2,
+            'lead_time_days' => 10,
+            'maintenance_criticality' => 'B',
+            'notes' => 'Test Notes'
         ]);
 
         $response->assertStatus(200);
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('mapping.code', 'VBLT-A42');
         $response->assertJsonPath('mapping.name', 'V-Belt A42');
+        $response->assertJsonPath('mapping.qty_per_machine', 2);
+        $response->assertJsonPath('mapping.lead_time_days', 10);
+        $response->assertJsonPath('mapping.maintenance_criticality', 'B');
+        $response->assertJsonPath('mapping.notes', 'Test Notes');
 
         $this->assertDatabaseHas('machine_required_spareparts', [
             'machine_id' => $this->machine->id,
-            'warehouse_item_code' => 'VBLT-A42'
+            'warehouse_item_code' => 'VBLT-A42',
+            'qty_per_machine' => 2,
+            'lead_time_days' => 10,
+            'maintenance_criticality' => 'B',
+            'notes' => 'Test Notes'
         ]);
+    }
+
+    /**
+     * Test updating a mapping successfully.
+     */
+    public function test_update_mapping_successfully(): void
+    {
+        $mapping = MachineRequiredSparepart::where('machine_id', $this->machine->id)
+            ->where('warehouse_item_code', 'BRG-6204')
+            ->firstOrFail();
+
+        $response = $this->json('PUT', route('machines.spareparts.update', [
+            'machine' => $this->machine->code,
+            'mapping' => $mapping->id
+        ]), [
+            'qty_per_machine' => 5,
+            'lead_time_days' => 14,
+            'maintenance_criticality' => 'A',
+            'notes' => 'Updated Notes'
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('mapping.qty_per_machine', 5);
+        $response->assertJsonPath('mapping.lead_time_days', 14);
+        $response->assertJsonPath('mapping.maintenance_criticality', 'A');
+        $response->assertJsonPath('mapping.notes', 'Updated Notes');
+
+        $this->assertDatabaseHas('machine_required_spareparts', [
+            'id' => $mapping->id,
+            'qty_per_machine' => 5,
+            'lead_time_days' => 14,
+            'maintenance_criticality' => 'A',
+            'notes' => 'Updated Notes'
+        ]);
+    }
+
+    /**
+     * Test updating mapping with invalid validation values.
+     */
+    public function test_update_mapping_validation_failures(): void
+    {
+        $mapping = MachineRequiredSparepart::where('machine_id', $this->machine->id)
+            ->where('warehouse_item_code', 'BRG-6204')
+            ->firstOrFail();
+
+        // 1. Invalid qty (negative)
+        $response = $this->json('PUT', route('machines.spareparts.update', [
+            'machine' => $this->machine->code,
+            'mapping' => $mapping->id
+        ]), [
+            'qty_per_machine' => -1,
+            'lead_time_days' => 7,
+            'maintenance_criticality' => 'C'
+        ]);
+        $response->assertStatus(422);
+
+        // 2. Invalid lead time (zero)
+        $response = $this->json('PUT', route('machines.spareparts.update', [
+            'machine' => $this->machine->code,
+            'mapping' => $mapping->id
+        ]), [
+            'qty_per_machine' => 1,
+            'lead_time_days' => 0,
+            'maintenance_criticality' => 'C'
+        ]);
+        $response->assertStatus(422);
+
+        // 3. Invalid criticality
+        $response = $this->json('PUT', route('machines.spareparts.update', [
+            'machine' => $this->machine->code,
+            'mapping' => $mapping->id
+        ]), [
+            'qty_per_machine' => 1,
+            'lead_time_days' => 7,
+            'maintenance_criticality' => 'Z'
+        ]);
+        $response->assertStatus(422);
     }
 
     /**

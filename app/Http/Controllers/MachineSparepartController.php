@@ -37,6 +37,10 @@ class MachineSparepartController extends Controller
 
         $validated = $request->validate([
             'warehouse_item_code' => 'required|string',
+            'qty_per_machine' => 'nullable|integer|min:1',
+            'lead_time_days' => 'nullable|integer|min:1',
+            'maintenance_criticality' => 'nullable|string|in:A,B,C',
+            'notes' => 'nullable|string',
         ]);
 
         $itemCode = strtoupper(trim($validated['warehouse_item_code']));
@@ -60,16 +64,47 @@ class MachineSparepartController extends Controller
             ], 422);
         }
 
-        // Store relationship only (machine_id and warehouse_item_code)
+        // Store relationship and mapping parameters
         $mapping = MachineRequiredSparepart::create([
             'machine_id' => $machine->id,
             'warehouse_item_code' => $itemCode,
+            'qty_per_machine' => $validated['qty_per_machine'] ?? 1,
+            'lead_time_days' => $validated['lead_time_days'] ?? 7,
+            'maintenance_criticality' => $validated['maintenance_criticality'] ?? 'C',
+            'notes' => $validated['notes'] ?? null,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Mapping sparepart berhasil ditambahkan.',
-            'mapping' => array_merge($itemDto->toArray(), ['mapping_id' => $mapping->id])
+            'mapping' => array_merge($itemDto->toArray(), [
+                'mapping_id' => $mapping->id,
+                'qty_per_machine' => $mapping->qty_per_machine,
+                'lead_time_days' => $mapping->lead_time_days,
+                'maintenance_criticality' => $mapping->maintenance_criticality,
+                'notes' => $mapping->notes,
+            ])
+        ]);
+    }
+
+    /**
+     * Update machine required sparepart mapping configuration.
+     */
+    public function update(Request $request, string $machineCode, MachineRequiredSparepart $mapping)
+    {
+        $validated = $request->validate([
+            'qty_per_machine' => 'required|integer|min:1',
+            'lead_time_days' => 'required|integer|min:1',
+            'maintenance_criticality' => 'required|string|in:A,B,C',
+            'notes' => 'nullable|string',
+        ]);
+
+        $mapping->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Konfigurasi sparepart berhasil diperbarui.',
+            'mapping' => $mapping
         ]);
     }
 

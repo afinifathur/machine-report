@@ -16,6 +16,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 12,
             'location' => 'WH-A-RACK3',
             'supplier' => 'SKF Industries',
+            'weekly_average' => 14.0,
+            'category' => 'Bearing',
         ],
         'SEAL-TC-40' => [
             'variant_id' => 2,
@@ -26,6 +28,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 0,
             'location' => 'WH-B-RACK1',
             'supplier' => 'Nok Seals Corp',
+            'weekly_average' => 5.0,
+            'category' => 'Seal',
         ],
         'HYD-OIL-46' => [
             'variant_id' => 3,
@@ -36,6 +40,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 2,
             'location' => 'WH-C-DRUM2',
             'supplier' => 'Shell Lubricants',
+            'weekly_average' => 25.5,
+            'category' => 'Lubricant',
         ],
         'SL-6204' => [
             'variant_id' => 4,
@@ -46,6 +52,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 0,
             'location' => 'WH-B-RACK1',
             'supplier' => 'Nok Seals Corp',
+            'weekly_average' => 8.0,
+            'category' => 'Seal',
         ],
         'PMP-G1' => [
             'variant_id' => 5,
@@ -56,6 +64,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 5,
             'location' => 'WH-A-RACK12',
             'supplier' => 'Rexroth AG',
+            'weekly_average' => 2.0,
+            'category' => 'Pump',
         ],
         'VBLT-A42' => [
             'variant_id' => 6,
@@ -66,6 +76,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 8,
             'location' => 'WH-D-RACK5',
             'supplier' => 'Gates Rubber Company',
+            'weekly_average' => 12.0,
+            'category' => 'Belt',
         ],
         'RLY-24V' => [
             'variant_id' => 7,
@@ -76,6 +88,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 15,
             'location' => 'WH-E-CAB1',
             'supplier' => 'Omron Corporation',
+            'weekly_average' => 20.0,
+            'category' => 'Electrical',
         ],
         'BRG-NU22' => [
             'variant_id' => 8,
@@ -86,6 +100,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'stock' => 3,
             'location' => 'WH-A-RACK4',
             'supplier' => 'FAG Bearings',
+            'weekly_average' => 4.0,
+            'category' => 'Bearing',
         ],
     ];
 
@@ -111,7 +127,9 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
                     barcode: $item['barcode'],
                     location: $item['location'],
                     supplier: $item['supplier'],
-                    stock: $item['stock']
+                    stock: $item['stock'],
+                    weeklyAverage: $item['weekly_average'] ?? null,
+                    category: $item['category'] ?? 'General'
                 );
             } else {
                 $result[$normalized] = SparepartItemDTO::offlineFallback($normalized, isOffline: false);

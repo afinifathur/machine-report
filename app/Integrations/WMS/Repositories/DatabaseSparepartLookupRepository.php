@@ -103,6 +103,18 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                 $primaryBarcode = $barcodes->get($vId, collect())->first()?->barcode;
                 $primarySupplier = $suppliers->get($vId, collect())->first()?->name;
 
+                $category = 'General';
+                $lowerName = strtolower($variant->item_name);
+                if (str_starts_with($code, '5.01') || str_contains($lowerName, 'bearing')) {
+                    $category = 'Bearing';
+                } elseif (str_starts_with($code, '5.02') || str_contains($lowerName, 'seal')) {
+                    $category = 'Seal';
+                } elseif (str_contains($lowerName, 'belt')) {
+                    $category = 'Belt';
+                } elseif (str_contains($lowerName, 'oil') || str_contains($lowerName, 'grease') || str_contains($lowerName, 'lubricant')) {
+                    $category = 'Lubricant';
+                }
+
                 $result[$code] = SparepartItemDTO::fromRecord(
                     erpCode: $code,
                     variantId: $vId,
@@ -112,7 +124,9 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                     barcode: $primaryBarcode,
                     location: $locations,
                     supplier: $primarySupplier,
-                    stock: $stock
+                    stock: $stock,
+                    weeklyAverage: null,
+                    category: $category
                 );
             }
 

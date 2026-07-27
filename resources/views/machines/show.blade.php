@@ -370,7 +370,11 @@
                             <thead class="bg-surface-container-low/80 font-bold uppercase tracking-wider text-[10px] text-on-surface-variant border-b border-outline-variant/60">
                                 <tr>
                                     <th scope="col" class="py-2 px-3">Sparepart</th>
+                                    <th scope="col" class="py-2 px-3 text-center">Qty / Mesin</th>
                                     <th scope="col" class="py-2 px-3">Stock</th>
+                                    <th scope="col" class="py-2 px-3 text-center">Min / Target</th>
+                                    <th scope="col" class="py-2 px-3 text-center">Lead Time</th>
+                                    <th scope="col" class="py-2 px-3 text-center">Criticality</th>
                                     <th scope="col" class="py-2 px-3">Shared</th>
                                     <th scope="col" class="py-2 px-3 text-right">Action</th>
                                 </tr>
@@ -384,13 +388,33 @@
                                         $unitUpper = strtoupper(trim($dto->unit));
                                         $isPcs = ($unitUpper === 'PCS' || empty($unitUpper));
                                         $unitDisplay = $isPcs ? '' : ' ' . $dto->unit;
+                                        
+                                        // Min / Target display
+                                        $minVal = !is_null($status['min_stock']) ? number_format($status['min_stock'], 1) : null;
+                                        $targetVal = !is_null($status['target_stock']) ? number_format($status['target_stock'], 1) : null;
                                     @endphp
-                                    <tr class="hover:bg-surface-container-low/60 transition-colors sparepart-row h-[44px]" data-mapping-id="{{ $item['mapping_id'] }}">
+                                    <tr class="hover:bg-surface-container-low/60 transition-colors sparepart-row h-[44px]" 
+                                        data-mapping-id="{{ $item['mapping_id'] }}"
+                                        data-erp-code="{{ $dto->erpCode }}"
+                                        data-name="{{ $dto->name }}"
+                                        data-qty="{{ $item['qty_per_machine'] }}"
+                                        data-lead-time="{{ $item['lead_time_days'] }}"
+                                        data-criticality="{{ $item['maintenance_criticality'] }}"
+                                        data-notes="{{ $item['notes'] }}"
+                                    >
                                         <td class="py-1.5 px-3 max-w-[280px] lg:max-w-[360px]">
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="font-bold text-on-surface text-xs truncate" title="{{ $dto->name }}">{{ $dto->name }}</span>
-                                                <span class="mono font-bold text-[10px] px-1 py-0.2 rounded bg-surface-container border border-outline-variant/60 text-on-surface-variant shrink-0" title="ERP Code">{{ $dto->erpCode }}</span>
+                                            <div class="flex flex-col">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="font-bold text-on-surface text-xs truncate" title="{{ $dto->name }}">{{ $dto->name }}</span>
+                                                    <span class="mono font-bold text-[10px] px-1 py-0.2 rounded bg-surface-container border border-outline-variant/60 text-on-surface-variant shrink-0" title="ERP Code">{{ $dto->erpCode }}</span>
+                                                </div>
+                                                @if(!empty($item['notes']))
+                                                    <span class="text-[10px] text-on-surface-variant mt-0.5 truncate max-w-[200px]" title="{{ $item['notes'] }}">{{ $item['notes'] }}</span>
+                                                @endif
                                             </div>
+                                        </td>
+                                        <td class="py-1.5 px-3 text-center whitespace-nowrap text-xs font-bold text-on-surface">
+                                            {{ $item['qty_per_machine'] }}
                                         </td>
                                         <td class="py-1.5 px-3 whitespace-nowrap">
                                             @if($dto->isOffline)
@@ -403,6 +427,28 @@
                                                     <span>{{ $dto->stock }}{{ $unitDisplay }}</span>
                                                 </span>
                                             @endif
+                                        </td>
+                                        <td class="py-1.5 px-3 text-center whitespace-nowrap text-[11px] text-on-surface-variant font-medium">
+                                            @if(!is_null($minVal))
+                                                <span>{{ $minVal }} / {{ $targetVal }}</span>
+                                            @else
+                                                <span class="text-on-surface-variant/40">-</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-1.5 px-3 text-center whitespace-nowrap text-xs text-on-surface font-medium">
+                                            {{ $item['lead_time_days'] }} Hari
+                                        </td>
+                                        <td class="py-1.5 px-3 text-center whitespace-nowrap">
+                                            @php
+                                                $critColor = match($item['maintenance_criticality']) {
+                                                    'A' => 'bg-red-100 text-red-800 border-red-200 font-extrabold',
+                                                    'B' => 'bg-amber-100 text-amber-800 border-amber-200 font-bold',
+                                                    default => 'bg-gray-100 text-gray-800 border-gray-200 font-medium'
+                                                };
+                                            @endphp
+                                            <span class="px-1.5 py-0.2 rounded text-[10px] border uppercase {{ $critColor }}">
+                                                Kelas {{ $item['maintenance_criticality'] }}
+                                            </span>
                                         </td>
                                         <td class="py-1.5 px-3 whitespace-nowrap">
                                             @if($item['shared_count'] > 0)
@@ -421,6 +467,12 @@
                                                         <span class="material-symbols-outlined text-[16px]">open_in_new</span>
                                                     </a>
                                                 @endif
+                                                <a href="{{ route('spareparts.show', $dto->erpCode) }}" class="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors" title="Detail Sparepart">
+                                                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                                                </a>
+                                                <button type="button" class="p-1 text-primary hover:bg-primary/10 rounded-md transition-colors btn-edit-mapping" title="Edit Parameters">
+                                                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                                                </button>
                                                 <button type="button" class="p-1 text-error hover:bg-error-container/20 rounded-md transition-colors btn-delete-mapping" data-url="{{ route('machines.spareparts.destroy', [$machine->code, $item['mapping_id']]) }}" title="Hapus Mapping">
                                                     <span class="material-symbols-outlined text-[16px]">delete</span>
                                                 </button>
@@ -674,16 +726,20 @@
         </div>
     </div>
 
-    <!-- Add Sparepart Mapping Modal -->
+    <!-- Add/Edit Sparepart Mapping Modal -->
     <div id="sparepart-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 w-full max-w-md shadow-2xl relative" onclick="event.stopPropagation()">
             <button id="btn-close-sparepart-modal" class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface">
                 <span class="material-symbols-outlined">close</span>
             </button>
-            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Tambah Mapping Sparepart</h3>
+            <h3 id="sparepart-modal-title" class="font-headline-sm text-headline-sm text-on-surface font-bold mb-4">Tambah Mapping Sparepart</h3>
             
-            <div class="space-y-4">
-                <div class="relative">
+            <form id="sparepart-mapping-form" class="space-y-4">
+                <input type="hidden" id="mapping-method" name="_method" value="">
+                <input type="hidden" id="mapping-item-code" name="warehouse_item_code" value="">
+
+                <!-- Search Section (Only for adding) -->
+                <div id="sparepart-modal-search-section" class="relative">
                     <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Cari Sparepart</label>
                     <div class="relative">
                         <input id="sparepart-search-input" type="text" autocomplete="off" class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-3 pr-10 py-2 focus:ring-2 focus:ring-primary focus:outline-none text-body-md" placeholder="Ketik Nama atau Kode WMS... (min. 2 karakter)">
@@ -695,16 +751,62 @@
                     </div>
                 </div>
 
+                <!-- Selection Display -->
+                <div id="sparepart-modal-selection-display" class="hidden p-3 bg-surface-container-low border border-outline-variant rounded-xl flex items-center justify-between">
+                    <div class="min-w-0 flex-1 mr-2">
+                        <span class="block text-xs text-on-surface-variant font-semibold">Sparepart Terpilih</span>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span id="selected-item-name" class="font-bold text-on-surface text-body-sm truncate"></span>
+                            <span id="selected-item-code" class="mono text-[10px] px-1 py-0.2 rounded bg-surface-container border border-outline-variant/60 text-on-surface-variant font-bold shrink-0"></span>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-change-selection" class="px-2.5 py-1 bg-surface-container border border-outline-variant/60 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors shrink-0">
+                        Ubah
+                    </button>
+                </div>
+
+                <!-- Parameters Section -->
+                <div id="sparepart-modal-params-section" class="hidden space-y-4 pt-2 border-t border-outline-variant/40">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Qty per Mesin *</label>
+                            <input id="mapping-qty" type="number" name="qty_per_machine" min="1" value="1" required class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Lead Time (Hari) *</label>
+                            <input id="mapping-lead-time" type="number" name="lead_time_days" min="1" value="7" required class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Criticality Perawatan *</label>
+                        <select id="mapping-criticality" name="maintenance_criticality" required class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none">
+                            <option value="A">Kelas A (Bisa Menyebabkan Mesin Mati Total)</option>
+                            <option value="B">Kelas B (Mempengaruhi Kualitas/Kapasitas Produksi)</option>
+                            <option value="C" selected>Kelas C (Kurang Kritis / Tidak Menghambat Produksi)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Catatan Tambahan (Opsional)</label>
+                        <textarea id="mapping-notes" name="notes" rows="2" placeholder="Catatan posisi pemasangan, merk alternatif, dll..." class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none"></textarea>
+                    </div>
+                </div>
+
                 <!-- Error Message Alert -->
                 <div id="sparepart-error-alert" class="p-3 bg-error-container text-on-error-container rounded-lg text-body-sm hidden flex items-center gap-2">
                     <span class="material-symbols-outlined text-[20px]">error</span>
                     <span id="error-message-text"></span>
                 </div>
 
-                <div class="flex justify-end gap-3 pt-2">
-                    <button id="btn-cancel-sparepart-modal" type="button" class="px-4 py-2 bg-surface-container text-on-surface rounded-lg font-semibold text-sm hover:brightness-95 transition-all">Batal</button>
+                <div class="flex justify-end gap-3 pt-4 border-t border-outline-variant/40">
+                    <button id="btn-cancel-sparepart-modal" type="button" class="px-4 py-2 bg-surface-container text-on-surface rounded-lg font-semibold text-xs hover:brightness-95 transition-all">Batal</button>
+                    <button id="btn-submit-sparepart-modal" type="submit" class="px-5 py-2 bg-primary text-on-primary rounded-lg font-semibold text-xs hover:bg-primary-container transition-all flex items-center gap-1.5 shadow-sm">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span>Simpan Mapping</span>
+                    </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -1098,13 +1200,60 @@
             const errorAlert = document.getElementById('sparepart-error-alert');
             const errorText = document.getElementById('error-message-text');
 
-            // Open Modal
+            const mappingForm = document.getElementById('sparepart-mapping-form');
+            const methodInput = document.getElementById('mapping-method');
+            const itemCodeInput = document.getElementById('mapping-item-code');
+            const qtyInput = document.getElementById('mapping-qty');
+            const leadTimeInput = document.getElementById('mapping-lead-time');
+            const criticalityInput = document.getElementById('mapping-criticality');
+            const notesInput = document.getElementById('mapping-notes');
+            
+            const searchSection = document.getElementById('sparepart-modal-search-section');
+            const selectionDisplay = document.getElementById('sparepart-modal-selection-display');
+            const paramsSection = document.getElementById('sparepart-modal-params-section');
+            
+            const selectedItemName = document.getElementById('selected-item-name');
+            const selectedItemCode = document.getElementById('selected-item-code');
+            const btnChangeSelection = document.getElementById('btn-change-selection');
+            const btnSubmit = document.getElementById('btn-submit-sparepart-modal');
+
+            let currentMappingId = null;
+
+            // Open Modal in Add Mode
             btnOpen?.addEventListener('click', () => {
-                modal.classList.remove('hidden');
+                currentMappingId = null;
+                document.getElementById('sparepart-modal-title').textContent = 'Tambah Mapping Sparepart';
+                
+                // Reset form values to default
+                methodInput.value = '';
+                itemCodeInput.value = '';
+                qtyInput.value = 1;
+                leadTimeInput.value = 7;
+                criticalityInput.value = 'C';
+                notesInput.value = '';
+
+                // Reset sections visibility
                 searchInput.value = '';
                 searchResults.innerHTML = '';
                 searchResults.classList.add('hidden');
+                
+                searchSection.classList.remove('hidden');
+                selectionDisplay.classList.add('hidden');
+                paramsSection.classList.add('hidden');
+                btnChangeSelection.classList.remove('hidden');
+                
                 errorAlert.classList.add('hidden');
+                modal.classList.remove('hidden');
+                searchInput.focus();
+            });
+
+            // Change selection back to search
+            btnChangeSelection?.addEventListener('click', () => {
+                itemCodeInput.value = '';
+                selectionDisplay.classList.add('hidden');
+                paramsSection.classList.add('hidden');
+                searchSection.classList.remove('hidden');
+                searchInput.value = '';
                 searchInput.focus();
             });
 
@@ -1153,21 +1302,21 @@
                                 const row = document.createElement('div');
                                 row.className = 'p-3 hover:bg-surface-container cursor-pointer transition-colors border-b border-outline-variant last:border-b-0 flex justify-between items-center';
                                 row.innerHTML = `
-                                    <div>
-                                        <div class="font-body-md font-bold text-on-surface">${itemName}</div>
+                                    <div class="min-w-0 flex-1 mr-2">
+                                        <div class="font-body-md font-bold text-on-surface truncate">${itemName}</div>
                                         <div class="text-xs text-on-surface-variant flex flex-wrap gap-2 mt-0.5">
                                             <span>ERP: <strong class="mono text-on-surface">${itemCode}</strong></span>
                                             <span>Brand: <strong>${itemBrand}</strong></span>
                                             <span>Rak: <strong class="mono">${itemLocation}</strong></span>
                                         </div>
                                     </div>
-                                    <div class="text-right flex items-center gap-2">
+                                    <div class="text-right flex items-center gap-2 shrink-0">
                                         <span class="text-xs font-bold mono ${itemStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${itemStock}</span>
                                         <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
                                     </div>
                                 `;
                                 row.addEventListener('click', () => {
-                                    mapSparepart(itemCode);
+                                    selectSparepart(itemCode, itemName);
                                 });
                                 searchResults.appendChild(row);
                             });
@@ -1179,22 +1328,61 @@
                 }, 300);
             });
 
-            function mapSparepart(code) {
+            function selectSparepart(code, name) {
+                searchResults.classList.add('hidden');
+                
+                // Fill hidden item code
+                itemCodeInput.value = code;
+                
+                // Show selection panel
+                selectedItemName.textContent = name;
+                selectedItemCode.textContent = code;
+                
+                searchSection.classList.add('hidden');
+                selectionDisplay.classList.remove('hidden');
+                paramsSection.classList.remove('hidden');
+            }
+
+            // Submit Add/Edit Form
+            mappingForm?.addEventListener('submit', (e) => {
+                e.preventDefault();
                 errorAlert.classList.add('hidden');
                 
-                fetch(`{{ route('machines.spareparts.store', $machine->code) }}`, {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<span class="animate-spin rounded-full h-4 w-4 border-b-2 border-on-primary"></span> Menyimpan...`;
+
+                const isEdit = !!currentMappingId;
+                const url = isEdit 
+                    ? `/machines/{{ $machine->code }}/spareparts/${currentMappingId}`
+                    : `{{ route('machines.spareparts.store', $machine->code) }}`;
+                
+                const bodyData = {
+                    warehouse_item_code: itemCodeInput.value,
+                    qty_per_machine: qtyInput.value,
+                    lead_time_days: leadTimeInput.value,
+                    maintenance_criticality: criticalityInput.value,
+                    notes: notesInput.value
+                };
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                };
+
+                if (isEdit) {
+                    headers['X-HTTP-Method-Override'] = 'PUT';
+                }
+
+                fetch(url, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ warehouse_item_code: code })
+                    headers: headers,
+                    body: JSON.stringify(bodyData)
                 })
                 .then(async res => {
                     const data = await res.json();
                     if (!res.ok) {
-                        throw new Error(data.message || 'Gagal menambahkan mapping.');
+                        throw new Error(data.message || 'Gagal menyimpan mapping sparepart.');
                     }
                     return data;
                 })
@@ -1206,63 +1394,45 @@
                 .catch(err => {
                     errorText.textContent = err.message;
                     errorAlert.classList.remove('hidden');
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> <span>Simpan Mapping</span>`;
                 });
-            }
+            });
 
-            function appendSparepartRow(item) {
-                const list = document.getElementById('spareparts-list');
-                const emptyState = document.getElementById('spareparts-empty-state');
-                if (emptyState) {
-                    emptyState.remove();
-                }
+            // Open Modal in Edit Mode
+            window.openEditMappingModal = function(row) {
+                currentMappingId = row.getAttribute('data-mapping-id');
+                const erpCode = row.getAttribute('data-erp-code');
+                const name = row.getAttribute('data-name');
+                const qty = row.getAttribute('data-qty');
+                const leadTime = row.getAttribute('data-lead-time');
+                const criticality = row.getAttribute('data-criticality');
+                const notes = row.getAttribute('data-notes');
 
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-surface-container-low/60 transition-colors sparepart-row h-[44px]';
-                row.setAttribute('data-mapping-id', item.mapping_id);
+                document.getElementById('sparepart-modal-title').textContent = 'Edit Mapping Sparepart';
+                
+                // Set hidden fields
+                methodInput.value = 'PUT';
+                itemCodeInput.value = erpCode;
 
-                const unitUpper = (item.unit || '').trim().toUpperCase();
-                const isPcs = (!unitUpper || unitUpper === 'PCS');
-                const unitStr = isPcs ? '' : ' ' + item.unit;
+                // Populate parameter fields
+                qtyInput.value = qty;
+                leadTimeInput.value = leadTime;
+                criticalityInput.value = criticality;
+                notesInput.value = notes || '';
 
-                let stockBadge = '';
-                if (item.isOffline) {
-                    stockBadge = `<span class="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full border border-gray-300 dark:border-gray-700">⚪ WMS Offline</span>`;
-                } else if (item.stock > 0) {
-                    stockBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold mono border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">🟢 ${item.stock}${unitStr}</span>`;
-                } else {
-                    stockBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold mono border bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">🔴 0${unitStr}</span>`;
-                }
+                // Show selected details, hide search, show params
+                selectedItemName.textContent = name;
+                selectedItemCode.textContent = erpCode;
 
-                const destroyUrl = `{{ url('/machines/' . $machine->code . '/spareparts') }}/${item.mapping_id}`;
+                searchSection.classList.add('hidden');
+                selectionDisplay.classList.remove('hidden');
+                btnChangeSelection.classList.add('hidden'); // Cannot change item code in edit mode
+                paramsSection.classList.remove('hidden');
 
-                row.innerHTML = `
-                    <td class="py-1.5 px-3 max-w-[280px] lg:max-w-[360px]">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold text-on-surface text-xs truncate" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
-                            <span class="mono font-bold text-[10px] px-1 py-0.2 rounded bg-surface-container border border-outline-variant/60 text-on-surface-variant shrink-0" title="ERP Code">${escapeHtml(item.code || '-')}</span>
-                        </div>
-                    </td>
-                    <td class="py-1.5 px-3 whitespace-nowrap">
-                        ${stockBadge}
-                    </td>
-                    <td class="py-1.5 px-3 whitespace-nowrap">
-                        <span class="text-on-surface-variant/40 text-[11px] font-medium">-</span>
-                    </td>
-                    <td class="py-1.5 px-3 text-right whitespace-nowrap">
-                        <div class="inline-flex items-center justify-end gap-1">
-                            <button type="button" class="p-1 text-error hover:bg-error-container/20 rounded-md transition-colors btn-delete-mapping" data-url="${destroyUrl}" title="Hapus Mapping">
-                                <span class="material-symbols-outlined text-[16px]">delete</span>
-                            </button>
-                        </div>
-                    </td>
-                `;
-
-                row.querySelector('.btn-delete-mapping').addEventListener('click', function() {
-                    handleDeleteMapping(this);
-                });
-
-                list.appendChild(row);
-            }
+                errorAlert.classList.add('hidden');
+                modal.classList.remove('hidden');
+            };
 
             function handleDeleteMapping(button) {
                 if (!confirm('Apakah Anda yakin ingin menghapus mapping sparepart ini?')) {
@@ -1294,7 +1464,7 @@
                         if (list.children.length === 0) {
                             list.innerHTML = `
                                 <tr id="spareparts-empty-state">
-                                    <td colspan="4" class="text-center py-6 text-on-surface-variant text-xs italic">
+                                    <td colspan="8" class="text-center py-6 text-on-surface-variant text-xs italic">
                                         Belum ada kebutuhan sparepart yang dipetakan untuk mesin ini.
                                     </td>
                                 </tr>
@@ -1306,6 +1476,14 @@
                     alert(err.message);
                 });
             }
+
+            // Bind edit event listeners for existing elements
+            document.querySelectorAll('.btn-edit-mapping').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const row = this.closest('.sparepart-row');
+                    openEditMappingModal(row);
+                });
+            });
 
             // Bind delete event listeners for existing elements
             document.querySelectorAll('.btn-delete-mapping').forEach(btn => {
