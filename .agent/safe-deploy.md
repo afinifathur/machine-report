@@ -45,71 +45,183 @@ cd /srv/docker/apps/Warehouse-System-SP
 # Password database: wh_sys_k8q2pL9zX_prod
 sudo docker compose exec warehouse-db mysqldump -u warehouse_system_user -p[PASSWORD] warehouse_system > /home/peroniks/backups/warehouse_backup_$(date +%Y%m%d_%H%M%S).sql
 ```
-
 ### STEP 3: Pull & Update di Server
 
 ```bash
 cd /srv/docker/apps/Warehouse-System-SP
 
+# Pastikan repository bersih sebelum pull
+sudo git status
+
 # Pull kode terbaru
 sudo git pull origin main
 
-# Build & Restart (agar .env dan environment sinkron)
+# (Opsional) Pastikan file migration terbaru sudah ada di host
+ls database/migrations | tail
+
+# Rebuild image dari source terbaru
+# WAJIB jika ada perubahan source code (PHP, Blade, Migration, Composer, Dockerfile)
 sudo docker compose build --no-cache
+
+# Jalankan container terbaru
 sudo docker compose up -d
 
-# Hubungkan kembali symlink storage
+# Pastikan migration terbaru benar-benar sudah masuk ke dalam container
+sudo docker compose exec app ls /var/www/html/database/migrations | tail
+
+# Pastikan storage symlink tersedia
 sudo docker compose exec app php artisan storage:link
 
-# Clear semua cache
-sudo docker compose exec app php artisan config:clear
-sudo docker compose exec app php artisan view:clear
-sudo docker compose exec app php artisan route:clear
-sudo docker compose exec app php artisan cache:clear
+# Bersihkan cache Laravel
+sudo docker compose exec app php artisan optimize:clear
 
-# HANYA jika ada migration baru (BUKAN migrate:fresh!)
-sudo docker compose exec app php artisan migrate
+# Cek status migration
+sudo docker compose exec app php artisan migrate:status
 
-# Re-cache untuk production
+# Jalankan migration HANYA jika ada migration baru
+# (JANGAN PERNAH menggunakan migrate:fresh di production)
+sudo docker compose exec app php artisan migrate --force
+
+# Rebuild cache production
 sudo docker compose exec app php artisan config:cache
 sudo docker compose exec app php artisan route:cache
+sudo docker compose exec app php artisan view:cache
 ```
-
-### STEP 4: Verifikasi
-
-1. Buka aplikasi di browser (http://10.88.8.46:6031)
-2. Cek apakah fitur baru berfungsi
-3. Cek apakah data lama masih ada
 
 ---
 
-## ⚠️ PERINTAH BERBAHAYA - JANGAN GUNAKAN DI PRODUCTION
+### STEP 4: Verifikasi
+
+#### A. Verifikasi Docker
 
 ```bash
-# ❌ JANGAN! Ini menghapus SEMUA data!
+sudo docker compose ps
+```
+
+Pastikan seluruh container berstatus **Up**.
+
+---
+
+#### B. Verifikasi Laravel
+
+```bash
+sudo docker compose exec app php artisan about
+```
+
+```bash
+sudo docker compose exec app php artisan migrate:status
+```
+
+Pastikan:
+
+- Tidak ada migration yang masih **Pending**
+- Tidak ada error saat startup
+
+---
+
+#### C. Verifikasi Log
+
+```bash
+sudo docker compose exec app tail -n 50 storage/logs/laravel.log
+```
+
+Pastikan tidak ada error baru setelah proses deploy.
+
+---
+
+#### D. Verifikasi Aplikasi
+
+Buka aplikasi di browser.
+
+Periksa:
+
+- ✅ Login berhasil
+- ✅ Dashboard tampil normal
+- ✅ Fitur yang baru di-deploy berjalan
+- ✅ Data lama masih ada
+- ✅ Tidak ada error 500
+- ✅ Tidak ada warning pada halaman
+
+---
+
+## ⚠️ PERINTAH BERBAHAYA - JANGAN DIGUNAKAN DI PRODUCTION
+
+```bash
+# ❌ MENGHAPUS SELURUH DATABASE
 php artisan migrate:fresh
+
+# ❌ MENGHAPUS DATABASE + SEED
 php artisan migrate:fresh --seed
+
+# ❌ Rollback dapat menghapus struktur/data production
 php artisan migrate:rollback
+
+# ❌ Menghapus seluruh database
 php artisan db:wipe
+
+# ❌ Jangan melakukan reset database production
+php artisan migrate:reset
 ```
 
 ---
 
 ## Checklist Sebelum Deploy
 
-- [ ] Sudah test di local (Laragon)?
-- [ ] Ada migration baru? Jika ya, backup database dulu!
+- [ ] Sudah test di Local (Laragon)?
+- [ ] Repository Local sudah bersih (`git status`)?
+- [ ] Ada migration baru?
+- [ ] Backup database sudah tersedia?
 - [ ] Commit message sudah jelas?
 - [ ] Push ke remote `prod`?
+- [ ] Sudah memberi tahu user jika deployment berpotensi mengganggu akses?
 
 ---
 
 ## Recovery Jika Terjadi Masalah
 
-```bash
-# Restore database dari backup
-sudo docker compose exec -T warehouse-db mysql -u warehouse_system_user -p[PASSWORD] warehouse_system < /home/peroniks/backups/warehouse_backup_YYYYMMDD_HHMMSS.sql
+### Restore Database
 
-# Rollback ke commit sebelumnya
+```bash
+sudo docker compose exec -T warehouse-db \
+mysql -u warehouse_system_user -p[PASSWORD] warehouse_system \
+< /home/peroniks/backups/warehouse_backup_YYYYMMDD_HHMMSS.sql
+```
+
+### Rollback Source Code
+
+```bash
 sudo git reset --hard HEAD~1
 ```
+
+Kemudian lakukan deploy ulang:
+
+```bash
+sudo docker compose build --no-cache
+sudo docker compose up -d
+sudo docker compose exec app php artisan optimize:clear
+sudo docker compose exec app php artisan config:cache
+sudo docker compose exec app php artisan route:cache
+```
+
+---
+
+## 📌 Catatan Penting (Hasil Incident 2026-07-28)
+
+Project ini menggunakan Dockerfile dengan mekanisme:
+
+```dockerfile
+COPY . .
+```
+
+Artinya:
+
+- `git pull` **hanya memperbarui source code di host server**.
+- Container yang sedang berjalan **tidak otomatis menggunakan source code terbaru**.
+- Jika terdapat perubahan PHP, Blade, Migration, Composer, atau Dockerfile, maka **WAJIB** menjalankan:
+
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+
+Jangan menganggap `git pull` saja sudah cukup untuk meng-update aplikasi yang sedang berjalan.
