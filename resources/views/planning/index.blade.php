@@ -35,44 +35,44 @@
     </div>
 
     <!-- Top KPI Dashboard Grid -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div class="w-12 h-12 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center">
-                <span class="material-symbols-outlined text-[28px]">calendar_today</span>
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded-xl flex items-center gap-2.5 shadow-xs hover:shadow-sm transition-all">
+            <div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[18px]">calendar_today</span>
             </div>
-            <div>
-                <p class="text-label-md text-on-surface-variant uppercase font-semibold">Total Rencana</p>
-                <h3 class="text-headline-md font-headline-md">{{ $totalCount }}</h3>
-            </div>
-        </div>
-
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-green-500">
-            <div class="w-12 h-12 rounded-lg bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[28px]">check_circle</span>
-            </div>
-            <div>
-                <p class="text-label-md text-on-surface-variant uppercase font-semibold">Siap Eksekusi</p>
-                <h3 class="text-headline-md font-headline-md text-green-600">{{ $readyCount }}</h3>
+            <div class="min-w-0">
+                <p class="text-[9px] text-on-surface-variant uppercase font-bold tracking-wider truncate">Total Rencana</p>
+                <h3 class="text-base font-black leading-tight">{{ $totalCount }}</h3>
             </div>
         </div>
 
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
-            <div class="w-12 h-12 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[28px]">pending</span>
+        <div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded-xl flex items-center gap-2.5 shadow-xs hover:shadow-sm transition-all border-l-4 border-l-green-500">
+            <div class="w-8 h-8 rounded-lg bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
             </div>
-            <div>
-                <p class="text-label-md text-on-surface-variant uppercase font-semibold">Hampir Siap</p>
-                <h3 class="text-headline-md font-headline-md text-orange-600">{{ $almostReadyCount }}</h3>
+            <div class="min-w-0">
+                <p class="text-[9px] text-on-surface-variant uppercase font-bold tracking-wider truncate">Siap Eksekusi</p>
+                <h3 class="text-base font-black leading-tight text-green-600">{{ $readyCount }}</h3>
             </div>
         </div>
 
-        <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-error">
-            <div class="w-12 h-12 rounded-lg bg-error-container text-on-error-container flex items-center justify-center animate-pulse">
-                <span class="material-symbols-outlined text-[28px]">block</span>
+        <div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded-xl flex items-center gap-2.5 shadow-xs hover:shadow-sm transition-all border-l-4 border-l-orange-500">
+            <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[18px]">pending</span>
             </div>
-            <div>
-                <p class="text-label-md text-on-surface-variant uppercase font-semibold">Terblokir</p>
-                <h3 class="text-headline-md font-headline-md text-error">{{ $blockedCount }}</h3>
+            <div class="min-w-0">
+                <p class="text-[9px] text-on-surface-variant uppercase font-bold tracking-wider truncate">Hampir Siap</p>
+                <h3 class="text-base font-black leading-tight text-orange-600">{{ $almostReadyCount }}</h3>
+            </div>
+        </div>
+
+        <div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded-xl flex items-center gap-2.5 shadow-xs hover:shadow-sm transition-all border-l-4 border-l-error">
+            <div class="w-8 h-8 rounded-lg bg-error-container text-on-error-container flex items-center justify-center shrink-0 animate-pulse">
+                <span class="material-symbols-outlined text-[18px]">block</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[9px] text-on-surface-variant uppercase font-bold tracking-wider truncate">Terblokir</p>
+                <h3 class="text-base font-black leading-tight text-error">{{ $blockedCount }}</h3>
             </div>
         </div>
     </section>
@@ -110,15 +110,24 @@
         <form method="GET" action="{{ route('planning.index') }}" class="flex flex-col gap-6">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <!-- Search Input -->
-                <div class="md:col-span-4 relative">
+                <div class="md:col-span-3 relative">
                     <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant">search</span>
                     <input 
                         type="text" 
                         name="search" 
                         value="{{ request('search') }}"
-                        placeholder="Cari mesin, paket perawatan, catatan..." 
+                        placeholder="Cari mesin, catatan..." 
                         class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-body-md focus:outline-none focus:border-primary"
                     />
+                </div>
+
+                <!-- Type Filter -->
+                <div class="md:col-span-2">
+                    <select name="type_filter" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md focus:outline-none focus:border-primary">
+                        <option value="">Semua Tipe</option>
+                        <option value="pm" {{ request('type_filter') === 'pm' ? 'selected' : '' }}>Preventive (PM)</option>
+                        <option value="corrective" {{ request('type_filter') === 'corrective' ? 'selected' : '' }}>Corrective (CM)</option>
+                    </select>
                 </div>
 
                 <!-- Priority Filter -->
@@ -133,7 +142,7 @@
                 </div>
 
                 <!-- Readiness Status Filter -->
-                <div class="md:col-span-3">
+                <div class="md:col-span-2">
                     <select name="readiness_status" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md focus:outline-none focus:border-primary">
                         <option value="">Semua Audit Kesiapan</option>
                         <option value="Ready" {{ request('readiness_status') === 'Ready' ? 'selected' : '' }}>Siap Eksekusi</option>
@@ -147,9 +156,9 @@
                     <select name="status" class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md focus:outline-none focus:border-primary">
                         <option value="">Semua Status</option>
                         <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draf</option>
-                        <option value="waiting_approval" {{ request('status') === 'waiting_approval' ? 'selected' : '' }}>Menunggu Persetujuan</option>
-                        <option value="approved" {{ request('status') === 'approved' ? 'selected' : '' }}>Disetujui</option>
-                        <option value="scheduled" {{ request('status') === 'scheduled' ? 'selected' : '' }}>Terjadwal</option>
+                        <option value="reported" {{ request('status') === 'reported' ? 'selected' : '' }}>Dilaporkan</option>
+                        <option value="assigned" {{ request('status') === 'assigned' ? 'selected' : '' }}>Ditugaskan</option>
+                        <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Selesai</option>
                     </select>
                 </div>
 
@@ -158,7 +167,7 @@
                     <button type="submit" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg text-body-md font-bold flex-1 flex justify-center items-center">
                         Filter
                     </button>
-                    @if(request()->anyFilled(['search', 'priority', 'readiness_status', 'status']))
+                    @if(request()->anyFilled(['search', 'priority', 'readiness_status', 'status', 'type_filter']))
                         <a href="{{ route('planning.index') }}" class="bg-surface-container border border-outline-variant hover:bg-surface-container-high px-3 py-2 rounded-lg flex items-center justify-center" title="Reset Filter">
                             <span class="material-symbols-outlined">restart_alt</span>
                         </a>
@@ -185,131 +194,123 @@
     </div>
 
     <!-- VIEW 1: TIMELINE / CARD LIST VIEW -->
-    <div id="view-timeline" class="space-y-6">
-        @if($plans->count() > 0)
-            <div class="relative pl-6 sm:pl-8 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-outline-variant space-y-6">
-                @foreach($plans as $plan)
-                    @php
-                        $rd = $plan->readiness;
-                        $statusText = $rd['overall_status'];
-                        
-                        $statusBadgeClass = match($statusText) {
-                            'Completed' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200',
-                            'Waiting Review' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200',
-                            'Ready' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200',
-                            'Almost Ready' => 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border border-orange-200',
-                            'Blocked' => 'bg-error-container text-on-error-container border border-error/20',
-                        };
+    <div id="view-timeline" class="space-y-4">
+        @php
+            $sortPlans = function($collection) {
+                return $collection->sort(function($a, $b) {
+                    // 1. Priority (Critical, High, Medium, Low)
+                    $priorityOrder = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
+                    $priorityA = $priorityOrder[$a->priority] ?? 0;
+                    $priorityB = $priorityOrder[$b->priority] ?? 0;
+                    if ($priorityA !== $priorityB) {
+                        return $priorityB <=> $priorityA; // descending (Critical first)
+                    }
+                    
+                    // 2. Status (Reported, Assigned, Ready, Blocked)
+                    $statusOrder = [
+                        'Reported' => 5,
+                        'Assigned' => 4,
+                        'Ready' => 3,
+                        'Almost Ready' => 2,
+                        'Blocked' => 1
+                    ];
+                    $statusA = $statusOrder[$a->readiness['overall_status']] ?? 0;
+                    $statusB = $statusOrder[$b->readiness['overall_status']] ?? 0;
+                    if ($statusA !== $statusB) {
+                        return $statusB <=> $statusA; // descending (Reported first)
+                    }
+                    
+                    // 3. Scheduled Time (ascending)
+                    $timeA = $a->scheduled_date->timestamp;
+                    $timeB = $b->scheduled_date->timestamp;
+                    if ($timeA !== $timeB) {
+                        return $timeA <=> $timeB;
+                    }
+                    
+                    return $a->id <=> $b->id;
+                });
+            };
 
-                        $statusLabel = match($statusText) {
-                            'Completed' => 'Selesai',
-                            'Waiting Review' => 'Menunggu Review',
-                            'Ready' => 'Siap Eksekusi',
-                            'Almost Ready' => 'Hampir Siap',
-                            'Blocked' => 'Terblokir',
-                        };
+            $todayDate = \Carbon\Carbon::today();
+            $tomorrowDate = \Carbon\Carbon::tomorrow();
 
-                        $priorityBadgeClass = match($plan->priority) {
-                            'low' => 'bg-surface-container text-on-surface-variant',
-                            'medium' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
-                            'high' => 'bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-300',
-                            'critical' => 'bg-error-container text-on-error-container font-bold',
-                        };
+            // Filter out completed plans for List View
+            $activePlans = $plans->filter(fn($p) => $p->status !== 'completed');
 
-                        $priorityLabel = match($plan->priority) {
-                            'low' => 'Rendah',
-                            'medium' => 'Sedang',
-                            'high' => 'Tinggi',
-                            'critical' => 'Kritis',
-                        };
-                    @endphp
+            // Group into Today, Tomorrow, Upcoming
+            $todayPlansList = $sortPlans($activePlans->filter(fn($p) => $p->scheduled_date->startOfDay()->lte($todayDate)));
+            $tomorrowPlansList = $sortPlans($activePlans->filter(fn($p) => $p->scheduled_date->startOfDay()->eq($tomorrowDate)));
+            $upcomingPlansList = $sortPlans($activePlans->filter(fn($p) => $p->scheduled_date->startOfDay()->gt($tomorrowDate)));
+        @endphp
 
-                    <!-- Timeline Event Block -->
-                    <div class="relative">
-                        <!-- Left Node Dot -->
-                        <div class="absolute -left-[30px] sm:-left-[38px] top-4 w-4 h-4 rounded-full border-4 border-surface-container-lowest ring-4 ring-white shadow-sm
-                            {{ $statusText === 'Completed' || $statusText === 'Ready' ? 'bg-green-500' : ($statusText === 'Waiting Review' ? 'bg-blue-500' : ($statusText === 'Almost Ready' ? 'bg-orange-500' : 'bg-error')) }}">
-                        </div>
-
-                        <!-- Card Body -->
-                        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
-                            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-                                <div>
-                                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
-                                        <span class="mono text-body-sm font-semibold text-primary px-2 py-0.5 bg-primary/10 rounded">{{ $plan->machine->code }}</span>
-                                        <span class="text-body-sm text-on-surface-variant font-medium">{{ $plan->machine->name }}</span>
-                                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-label-sm font-bold uppercase {{ $priorityBadgeClass }}">
-                                            {{ $priorityLabel }}
-                                        </span>
-                                    </div>
-                                    <h3 class="font-headline-sm text-headline-sm text-on-surface">
-                                        Paket Perawatan: {{ $plan->maintenanceTemplate->name }}
-                                    </h3>
-                                    <p class="text-body-sm text-on-surface-variant mt-1">Jadwal: <span class="font-semibold">{{ $plan->scheduled_date->format('d M Y') }}</span></p>
-                                </div>
-
-                                <div class="flex items-center gap-3">
-                                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-label-sm font-bold uppercase {{ $statusBadgeClass }}">
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $statusText === 'Completed' || $statusText === 'Ready' ? 'bg-green-500' : ($statusText === 'Waiting Review' ? 'bg-blue-500' : ($statusText === 'Almost Ready' ? 'bg-orange-500' : 'bg-error')) }}"></span>
-                                        {{ $statusLabel }}
-                                    </span>
-                                    <a href="{{ route('planning.show', $plan->id) }}" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg text-body-sm font-bold inline-flex items-center gap-1.5 transition-colors">
-                                        Audit Kesiapan
-                                        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
-                                    </a>
-                                </div>
-                            </div>
-
-                            <hr class="border-outline-variant my-3" />
-
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-body-sm text-on-surface-variant">
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-primary text-[20px]">timer</span>
-                                    <span>Durasi Est: <strong>{{ $plan->maintenanceTemplate->estimated_duration }} menit</strong></span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-primary text-[20px]">engineering</span>
-                                    <span>Teknisi: <strong>{{ $plan->assigned_technician ?? 'Belum Ditugaskan' }}</strong></span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-primary text-[20px]">smart_toy</span>
-                                    <span>Sistem Pembuat: <strong>{{ $plan->generation_source }}</strong></span>
-                                </div>
-                            </div>
-
-                            @if($plan->notes)
-                                <div class="mt-4 p-3 bg-surface-container-low rounded-lg text-body-sm text-on-surface-variant italic">
-                                    "{{ $plan->notes }}"
-                                </div>
-                            @endif
-
-                            <!-- Display Blockers Summary -->
-                            @if($statusText === 'Blocked' && count($rd['blockers']) > 0)
-                                <div class="mt-4 flex flex-col gap-1 border-t border-error/15 pt-3">
-                                    <span class="text-label-sm text-error font-bold uppercase flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">error</span> Hambatan Utama (Blockers)
-                                    </span>
-                                    <ul class="list-disc pl-5 text-xs text-error space-y-0.5">
-                                        @foreach($rd['blockers'] as $blocker)
-                                            <li>{{ $blocker }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @elseif($statusText === 'Almost Ready' && count($rd['warnings']) > 0)
-                                <div class="mt-4 flex flex-col gap-1 border-t border-orange-300/30 pt-3">
-                                    <span class="text-label-sm text-orange-600 font-bold uppercase flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-[14px]">warning</span> Persiapan Kurang (Warnings)
-                                    </span>
-                                    <ul class="list-disc pl-5 text-xs text-orange-700 space-y-0.5">
-                                        @foreach($rd['warnings'] as $warning)
-                                            <li>{{ $warning }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endif
-                        </div>
+        @if($activePlans->count() > 0)
+            <!-- TODAY Section -->
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <button 
+                    type="button" 
+                    onclick="toggleSection('section-today')" 
+                    class="w-full px-4 py-2.5 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between hover:bg-slate-100/70 transition-all focus:outline-none"
+                >
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-red-600"></span>
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700">Hari Ini / Terlambat (TODAY)</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-black">{{ $todayPlansList->count() }}</span>
                     </div>
-                @endforeach
+                    <span id="section-today-chevron" class="material-symbols-outlined text-slate-400 text-[18px] transition-transform">expand_more</span>
+                </button>
+                <div id="section-today" class="p-3 space-y-2">
+                    @forelse($todayPlansList as $plan)
+                        @include('planning.partials.compact_card', ['plan' => $plan])
+                    @empty
+                        <div class="text-center py-6 text-xs text-slate-400 italic">Tidak ada pekerjaan untuk hari ini.</div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- TOMORROW Section -->
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <button 
+                    type="button" 
+                    onclick="toggleSection('section-tomorrow')" 
+                    class="w-full px-4 py-2.5 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between hover:bg-slate-100/70 transition-all focus:outline-none"
+                >
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700">Besok (TOMORROW)</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-black">{{ $tomorrowPlansList->count() }}</span>
+                    </div>
+                    <span id="section-tomorrow-chevron" class="material-symbols-outlined text-slate-400 text-[18px] transition-transform flex items-center">expand_more</span>
+                </button>
+                <div id="section-tomorrow" class="p-3 space-y-2">
+                    @forelse($tomorrowPlansList as $plan)
+                        @include('planning.partials.compact_card', ['plan' => $plan])
+                    @empty
+                        <div class="text-center py-6 text-xs text-slate-400 italic">Tidak ada pekerjaan untuk besok.</div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- UPCOMING Section -->
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+                <button 
+                    type="button" 
+                    onclick="toggleSection('section-upcoming')" 
+                    class="w-full px-4 py-2.5 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between hover:bg-slate-100/70 transition-all focus:outline-none"
+                >
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700">Akan Datang (UPCOMING)</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-black">{{ $upcomingPlansList->count() }}</span>
+                    </div>
+                    <span id="section-upcoming-chevron" class="material-symbols-outlined text-slate-400 text-[18px] transition-transform">expand_more</span>
+                </button>
+                <div id="section-upcoming" class="p-3 space-y-2">
+                    @forelse($upcomingPlansList as $plan)
+                        @include('planning.partials.compact_card', ['plan' => $plan])
+                    @empty
+                        <div class="text-center py-6 text-xs text-slate-400 italic">Tidak ada pekerjaan mendatang.</div>
+                    @endforelse
+                </div>
             </div>
         @else
             <x-empty-state 
@@ -380,12 +381,14 @@
                                         'Ready' => 'bg-green-500 hover:bg-green-600',
                                         'Almost Ready' => 'bg-orange-500 hover:bg-orange-600',
                                         'Blocked' => 'bg-error hover:bg-error/95',
+                                        'Reported' => 'bg-rose-600 hover:bg-rose-700',
+                                        'Assigned' => 'bg-amber-500 hover:bg-amber-600',
                                     };
                                 @endphp
                                 <a 
                                     href="{{ route('planning.show', $p->id) }}" 
                                     class="text-[10px] text-white font-semibold truncate rounded px-1.5 py-0.5 flex items-center justify-between gap-1 shadow-sm transition-all hover:scale-[1.02] {{ $rdClass }}"
-                                    title="{{ $p->machine->code }} - {{ $p->maintenanceTemplate->name }} ({{ $p->readiness['overall_status'] }})"
+                                    title="{{ $p->machine->code }} - {{ $p->isCorrective() ? $p->breakdown_number : $p->maintenanceTemplate->name }} ({{ $p->readiness['overall_status'] }})"
                                 >
                                     <span>{{ $p->machine->code }}</span>
                                     <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
@@ -418,6 +421,18 @@
 
     <!-- UI State Navigation Script -->
     <script>
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const chevron = document.getElementById(sectionId + '-chevron');
+            if (section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+            } else {
+                section.classList.add('hidden');
+                if (chevron) chevron.style.transform = 'rotate(-90deg)';
+            }
+        }
+
         function switchView(view) {
             const btnTimeline = document.getElementById('tab-btn-timeline');
             const btnCalendar = document.getElementById('tab-btn-calendar');

@@ -8,6 +8,7 @@ use App\Models\MaintenanceExecution;
 use App\Models\MaintenanceExecutionAnswer;
 use App\Models\MaintenanceExecutionPhoto;
 use App\Services\ImageCompressionService;
+use App\Services\Maintenance\DowntimeCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -18,6 +19,8 @@ use chillerlan\QRCode\Common\EccLevel;
 class MaintenanceExecutionController extends Controller
 {
     protected ImageCompressionService $compressionService;
+    protected DowntimeCalculationService $downtimeService;
+    protected \App\Services\Maintenance\MachineHistorySummaryService $historyService;
 
     // Predefined Operator List to ensure consistency (Version 1)
     protected array $operators = [
@@ -29,9 +32,14 @@ class MaintenanceExecutionController extends Controller
         'B. Setiawan'
     ];
 
-    public function __construct(ImageCompressionService $compressionService)
-    {
+    public function __construct(
+        ImageCompressionService $compressionService,
+        DowntimeCalculationService $downtimeService,
+        \App\Services\Maintenance\MachineHistorySummaryService $historyService
+    ) {
         $this->compressionService = $compressionService;
+        $this->downtimeService = $downtimeService;
+        $this->historyService = $historyService;
     }
 
     /**
@@ -43,6 +51,17 @@ class MaintenanceExecutionController extends Controller
         $machine = Machine::where('code', $machineCode)->first();
         if (!$machine) {
             abort(404, 'Mesin tidak ditemukan.');
+        }
+
+        // Check if there is an active breakdown
+        $activeBreakdown = MaintenancePlan::where('machine_id', $machine->id)
+            ->where('type', \App\Enums\MaintenancePlanType::CORRECTIVE)
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->latest('reported_at')
+            ->first();
+
+        if ($activeBreakdown) {
+            return redirect()->route('planning.execute', $activeBreakdown->id);
         }
 
         // Find oldest active pending plan (status: scheduled, approved, waiting_approval, or draft)
@@ -60,6 +79,17 @@ class MaintenanceExecutionController extends Controller
     }
 
     /**
+     * Get dynamic list of technicians merged with hardcoded defaults.
+     */
+    protected function getOperators(): array
+    {
+        return \App\Models\Employee::where('employment_status', \App\Enums\EmploymentStatus::ACTIVE)
+            ->where('is_assignable', true)
+            ->pluck('full_name')
+            ->toArray();
+    }
+
+    /**
      * Show mobile checklist execution view.
      */
     public function create(MaintenancePlan $plan)
@@ -70,9 +100,15 @@ class MaintenanceExecutionController extends Controller
         }
 
         $plan->load(['machine', 'maintenanceTemplate.checklists']);
-        $operators = $this->operators;
+        
+        if ($plan->isCorrective()) {
+            $plan->load(['machine.requiredSpareparts']);
+        }
+        
+        $operators = $this->getOperators();
+        $historyCard = $this->historyService->getSummary($plan->machine);
 
-        return view('planning.execute', compact('plan', 'operators'));
+        return view('planning.execute', compact('plan', 'operators', 'historyCard'));
     }
 
     /**
@@ -85,7 +121,11 @@ class MaintenanceExecutionController extends Controller
                 ->with('error', 'Rencana perawatan ini sudah selesai.');
         }
 
-        // Create validator
+        if ($plan->isCorrective()) {
+            return $this->storeCorrective($request, $plan);
+        }
+
+        // Create validator for PM
         $validator = Validator::make($request->all(), [
             'operator_name' => 'required|string',
             'started_at' => 'required|date_format:Y-m-d H:i:s',
@@ -93,7 +133,7 @@ class MaintenanceExecutionController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Evaluate answers and apply conditional validation rules
+        // Evaluate answers and apply conditional validation rules for PM
         $validator->after(function ($validator) use ($request, $plan) {
             $answers = $request->input('answers', []);
             $checklistItems = $plan->maintenanceTemplate->checklists;
@@ -183,6 +223,102 @@ class MaintenanceExecutionController extends Controller
     }
 
     /**
+     * Store submitted execution corrective verification.
+     */
+    protected function storeCorrective(Request $request, MaintenancePlan $plan)
+    {
+        $request->validate([
+            'operator_name' => 'required|string',
+            'photo' => 'required|image|max:10240', // Required after photo
+            'photo_before' => 'nullable|image|max:10240', // Optional before photo
+            'operational_status' => 'required|string|in:running,idle',
+            'overall_score' => 'required|integer|between:1,5',
+            'notes' => 'nullable|string',
+            'spareparts' => 'nullable|array',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $completedAt = now();
+            // Calculate downtime duration using service
+            $downtimeDuration = $this->downtimeService->calculateMinutes($plan->reported_at, $completedAt);
+
+            // Compress and store after photo
+            $photoPathAfter = $this->compressionService->compressAndStore($request->file('photo'));
+
+            // Compress and store before photo if available
+            $photoPathBefore = null;
+            if ($request->hasFile('photo_before')) {
+                $photoPathBefore = $this->compressionService->compressAndStore($request->file('photo_before'));
+            }
+
+            // Create execution log (status completed since Admin verifies directly)
+            $execution = MaintenanceExecution::create([
+                'maintenance_plan_id' => $plan->id,
+                'machine_id' => $plan->machine_id,
+                'operator_name' => $request->input('operator_name'),
+                'started_at' => $plan->reported_at,
+                'completed_at' => $completedAt,
+                'overall_score' => $request->input('overall_score'),
+                'notes' => $request->input('notes'),
+                'status' => 'completed',
+            ]);
+
+            // Save after photo
+            MaintenanceExecutionPhoto::create([
+                'execution_id' => $execution->id,
+                'type' => 'after',
+                'photo_path' => $photoPathAfter,
+            ]);
+
+            // Save before photo if uploaded
+            if ($photoPathBefore) {
+                MaintenanceExecutionPhoto::create([
+                    'execution_id' => $execution->id,
+                    'type' => 'before',
+                    'photo_path' => $photoPathBefore,
+                ]);
+            }
+
+            // Save replaced spareparts
+            if ($request->filled('spareparts')) {
+                foreach ($request->input('spareparts') as $itemCode => $partData) {
+                    if (isset($partData['checked']) && $partData['checked'] == '1') {
+                        \App\Models\MaintenanceExecutionSparepart::create([
+                            'execution_id' => $execution->id,
+                            'warehouse_item_code' => $itemCode,
+                            'quantity' => $partData['qty'] ?? 1,
+                        ]);
+                    }
+                }
+            }
+
+            // Update machine operational status
+            $plan->machine->update([
+                'operational_status' => $request->input('operational_status'),
+            ]);
+
+            // Complete the plan
+            $plan->update([
+                'status' => 'completed',
+                'completed_at' => $completedAt,
+                'downtime_duration' => $downtimeDuration,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('planning.show', $plan->id)
+                ->with('success', 'Laporan verifikasi perbaikan berhasil diserahkan.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan sistem saat menyimpan verifikasi: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
      * Render printable Work Order briefing sheet.
      */
     public function print(MaintenancePlan $plan)
@@ -210,3 +346,4 @@ class MaintenanceExecutionController extends Controller
         return view('planning.print', compact('plan', 'previousExecution', 'qrCodeImage'));
     }
 }
+

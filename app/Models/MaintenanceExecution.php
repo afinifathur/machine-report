@@ -44,4 +44,10 @@ class MaintenanceExecution extends Model
     {
         return $this->hasMany(MaintenanceExecutionPhoto::class, 'execution_id');
     }
+
+    public function spareparts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MaintenanceExecutionSparepart::class, 'execution_id');
+    }
 }
+

@@ -1,0 +1,11 @@
+- [x] Create database migration for master_positions
+- [x] Create database migration for employees table & initial data migration
+- [x] Create App\Enums\EmploymentStatus enum
+- [x] Create App\Models\MasterPosition model
+- [x] Create App\Services\EmployeeNumberService service class
+- [x] Create App\Models\Employee model
+- [x] Modify App\Models\MasterDepartment and App\Models\User model relationships
+- [x] Refactor controllers & controllers data queries
+- [x] Refactor admin Blade template views
+- [x] Write integration feature tests in tests\Feature\EmployeeManagementTest.php
+- [x] Run PHPUnit tests and verify all passing

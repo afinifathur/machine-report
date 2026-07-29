@@ -740,15 +740,12 @@
 
                 <!-- Search Section (Only for adding) -->
                 <div id="sparepart-modal-search-section" class="relative">
-                    <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Cari Sparepart</label>
-                    <div class="relative">
-                        <input id="sparepart-search-input" type="text" autocomplete="off" class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-3 pr-10 py-2 focus:ring-2 focus:ring-primary focus:outline-none text-body-md" placeholder="Ketik Nama atau Kode WMS... (min. 2 karakter)">
-                        <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    </div>
-                    <!-- Search Results Dropdown -->
-                    <div id="sparepart-search-results" class="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-lg shadow-lg hidden z-50">
-                        <!-- Results will be injected here -->
-                    </div>
+                    <label class="block text-body-sm font-semibold text-on-surface-variant mb-1 font-bold">Cari Sparepart</label>
+                    <x-wms-sparepart-autocomplete 
+                        id="sparepart-autocomplete-mapping" 
+                        machineCode="{{ $machine->code }}" 
+                        placeholder="Ketik Nama atau Kode WMS..." 
+                    />
                 </div>
 
                 <!-- Selection Display -->
@@ -1195,8 +1192,8 @@
             const btnOpen = document.getElementById('btn-open-sparepart-modal');
             const btnClose = document.getElementById('btn-close-sparepart-modal');
             const btnCancel = document.getElementById('btn-cancel-sparepart-modal');
-            const searchInput = document.getElementById('sparepart-search-input');
-            const searchResults = document.getElementById('sparepart-search-results');
+            const searchInput = document.getElementById('search-sparepart-autocomplete-mapping');
+            const searchWrapper = document.getElementById('wrapper-sparepart-autocomplete-mapping');
             const errorAlert = document.getElementById('sparepart-error-alert');
             const errorText = document.getElementById('error-message-text');
 
@@ -1233,9 +1230,7 @@
                 notesInput.value = '';
 
                 // Reset sections visibility
-                searchInput.value = '';
-                searchResults.innerHTML = '';
-                searchResults.classList.add('hidden');
+                if (searchInput) searchInput.value = '';
                 
                 searchSection.classList.remove('hidden');
                 selectionDisplay.classList.add('hidden');
@@ -1244,7 +1239,7 @@
                 
                 errorAlert.classList.add('hidden');
                 modal.classList.remove('hidden');
-                searchInput.focus();
+                if (searchInput) searchInput.focus();
             });
 
             // Change selection back to search
@@ -1253,8 +1248,10 @@
                 selectionDisplay.classList.add('hidden');
                 paramsSection.classList.add('hidden');
                 searchSection.classList.remove('hidden');
-                searchInput.value = '';
-                searchInput.focus();
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                }
             });
 
             // Close Modal
@@ -1270,66 +1267,14 @@
             });
 
             // Search input autocomplete handler
-            let debounceTimer;
-            searchInput?.addEventListener('input', () => {
-                clearTimeout(debounceTimer);
-                const query = searchInput.value.trim();
-                
-                if (query.length < 2) {
-                    searchResults.innerHTML = '';
-                    searchResults.classList.add('hidden');
-                    return;
-                }
-
-                debounceTimer = setTimeout(() => {
-                    fetch(`{{ route('machines.spareparts.search', $machine->code) }}?q=${encodeURIComponent(query)}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            searchResults.innerHTML = '';
-                            if (data.length === 0) {
-                                searchResults.innerHTML = '<div class="p-3 text-body-sm text-on-surface-variant italic">Tidak ada sparepart ditemukan</div>';
-                                searchResults.classList.remove('hidden');
-                                return;
-                            }
-
-                            data.forEach(item => {
-                                const itemCode = item.code || item.erpCode || item.erp_code || '';
-                                const itemName = item.name || 'Unknown Sparepart';
-                                const itemBrand = item.brand || '-';
-                                const itemLocation = item.location || '-';
-                                const itemStock = item.stock !== undefined ? item.stock : 0;
-
-                                const row = document.createElement('div');
-                                row.className = 'p-3 hover:bg-surface-container cursor-pointer transition-colors border-b border-outline-variant last:border-b-0 flex justify-between items-center';
-                                row.innerHTML = `
-                                    <div class="min-w-0 flex-1 mr-2">
-                                        <div class="font-body-md font-bold text-on-surface truncate">${itemName}</div>
-                                        <div class="text-xs text-on-surface-variant flex flex-wrap gap-2 mt-0.5">
-                                            <span>ERP: <strong class="mono text-on-surface">${itemCode}</strong></span>
-                                            <span>Brand: <strong>${itemBrand}</strong></span>
-                                            <span>Rak: <strong class="mono">${itemLocation}</strong></span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right flex items-center gap-2 shrink-0">
-                                        <span class="text-xs font-bold mono ${itemStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">Stok: ${itemStock}</span>
-                                        <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
-                                    </div>
-                                `;
-                                row.addEventListener('click', () => {
-                                    selectSparepart(itemCode, itemName);
-                                });
-                                searchResults.appendChild(row);
-                            });
-                            searchResults.classList.remove('hidden');
-                        })
-                        .catch(err => {
-                            console.error('Error fetching autocomplete:', err);
-                        });
-                }, 300);
+            searchWrapper?.addEventListener('wms-sparepart-selected', (e) => {
+                const item = e.detail;
+                const itemCode = item.code || item.erpCode || item.erp_code || '';
+                const itemName = item.name || 'Unknown Sparepart';
+                selectSparepart(itemCode, itemName);
             });
 
             function selectSparepart(code, name) {
-                searchResults.classList.add('hidden');
                 
                 // Fill hidden item code
                 itemCodeInput.value = code;

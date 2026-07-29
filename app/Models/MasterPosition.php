@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class MasterDepartment extends Model
+class MasterPosition extends Model
 {
-    protected $table = 'master_departments';
+    protected $table = 'master_positions';
 
     protected $fillable = [
         'code',
@@ -22,6 +22,6 @@ class MasterDepartment extends Model
 
     public function employees()
     {
-        return $this->hasMany(Employee::class, 'department_id');
+        return $this->hasMany(Employee::class, 'position_id');
     }
 }

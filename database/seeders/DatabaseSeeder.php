@@ -73,6 +73,21 @@ class DatabaseSeeder extends Seeder
             \App\Models\MasterProductionArea::firstOrCreate(['code' => $a['code']], $a);
         }
 
+        $this->call(EmployeeSeeder::class);
+
+        // Clean up non-operational employee records
+        $nonOpsEmails = [
+            'admin@mrm.local',
+            'direktur@peroniks.com',
+            'purchasing@peroniks.com',
+            'adminsp@peroniks.com',
+            'auditor@peroniks.com',
+            'mr@peroniks.com',
+            'adminmtc@peroniks.com'
+        ];
+        $nonOpsUserIds = \App\Models\User::whereIn('email', $nonOpsEmails)->pluck('id');
+        \App\Models\Employee::whereIn('linked_user_id', $nonOpsUserIds)->delete();
+
         if (app()->environment('testing')) {
             $this->call(DummyMachineSeeder::class);
             $this->call(MaintenancePlanSeeder::class);

@@ -265,4 +265,27 @@ class Machine extends Model
             }
         };
     }
+
+    /**
+     * Get the latest active breakdown (unfinished corrective plan) for the machine.
+     */
+    public function activeBreakdown(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(MaintenancePlan::class, 'machine_id')
+            ->where('type', \App\Enums\MaintenancePlanType::CORRECTIVE)
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->latest('reported_at');
+    }
+
+    /**
+     * Get completed corrective plans ordered newest first.
+     */
+    public function correctiveHistory(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(MaintenancePlan::class, 'machine_id')
+            ->where('type', \App\Enums\MaintenancePlanType::CORRECTIVE)
+            ->where('status', 'completed')
+            ->latest('completed_at');
+    }
 }
+

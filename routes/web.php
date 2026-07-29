@@ -13,6 +13,7 @@ use App\Http\Controllers\MachineDocumentLinkController;
 use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceExecutionController;
 use App\Http\Controllers\ProcurementCaseController;
+use App\Http\Controllers\BreakdownController;
 
 // =========================================================================
 // GUEST ROUTES (Unauthenticated Users)
@@ -70,9 +71,7 @@ Route::middleware('auth')->group(function () {
     })->name('maintenances.index');
 
     // Breakdowns & Downtime
-    Route::get('/breakdowns', function () {
-        return view('breakdowns.index');
-    })->name('breakdowns.index');
+    Route::get('/breakdowns', [BreakdownController::class, 'index'])->name('breakdowns.index');
 
     // Spareparts Integration
     Route::get('/spareparts', [SparepartIntegrationController::class, 'index'])->name('spareparts.index');
@@ -81,6 +80,9 @@ Route::middleware('auth')->group(function () {
 
     // Planning
     Route::get('/planning', [MaintenancePlanController::class, 'index'])->name('planning.index');
+    Route::get('/planning/breakdown/report', [MaintenancePlanController::class, 'reportBreakdown'])->name('planning.report-breakdown');
+    Route::post('/planning/breakdowns', [MaintenancePlanController::class, 'storeBreakdown'])->name('planning.store-breakdown');
+    Route::post('/planning/{plan}/assign', [MaintenancePlanController::class, 'assignTechnician'])->name('planning.assign-technician');
     Route::get('/planning/{plan}', [MaintenancePlanController::class, 'show'])->name('planning.show');
 
     // Mobile/QR Checklist Execution
@@ -96,8 +98,138 @@ Route::middleware('auth')->group(function () {
 
     // Administration
     Route::get('/admin', function () {
-        return view('admin.index');
+        $employees = \App\Models\Employee::with(['department', 'position', 'user'])->orderBy('full_name')->get();
+        $users = \App\Models\User::with(['roles', 'employee'])->orderBy('name')->get();
+        $departments = \App\Models\MasterDepartment::orderBy('sort_order')->get();
+        $positions = \App\Models\MasterPosition::orderBy('sort_order')->get();
+        $categories = \App\Models\MasterMachineCategory::orderBy('sort_order')->get();
+        $roles = \Spatie\Permission\Models\Role::orderBy('name')->get();
+        
+        $unlinkedUsers = \App\Models\User::whereDoesntHave('employee')->orderBy('name')->get();
+        $unlinkedEmployees = \App\Models\Employee::whereNull('linked_user_id')->orderBy('full_name')->get();
+
+        return view('admin.index', compact(
+            'employees', 'users', 'departments', 'positions', 'categories', 'roles', 'unlinkedUsers', 'unlinkedEmployees'
+        ));
     })->name('admin.index');
+
+    Route::post('/admin/employees', function (Illuminate\Http\Request $request, \App\Services\EmployeeNumberService $empNumService) {
+        $validated = $request->validate([
+            'employee_number' => 'required|string|max:255',
+            'full_name' => 'required|string|max:255',
+            'department_id' => 'required|exists:master_departments,id',
+            'position_id' => 'required|exists:master_positions,id',
+            'employment_status' => 'required|string|in:ACTIVE,RESIGNED,RETIRED,TRANSFERRED,LEAVE',
+            'employment_start_date' => 'required|date',
+            'employment_end_date' => 'nullable|date',
+            'is_assignable' => 'boolean',
+            'primary_skill' => 'nullable|string|max:255',
+            'level' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'linked_user_id' => 'nullable|exists:users,id|unique:employees,linked_user_id',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $isAssignable = $request->boolean('is_assignable');
+        
+        $res = $empNumService->generateNextCode($validated['employee_number']);
+
+        $employee = \App\Models\Employee::create(array_merge($validated, [
+            'employee_index' => $res['employee_index'],
+            'employee_code' => $res['employee_code'],
+            'is_assignable' => $isAssignable,
+        ]));
+
+        return redirect()->route('admin.index')->with('success', "Karyawan {$employee->full_name} berhasil didaftarkan dengan kode {$employee->employee_code}.");
+    })->name('admin.employees.store');
+
+    Route::put('/admin/employees/{employee}', function (\App\Models\Employee $employee, Illuminate\Http\Request $request, \App\Services\EmployeeNumberService $empNumService) {
+        $validated = $request->validate([
+            'employee_number' => 'required|string|max:255',
+            'full_name' => 'required|string|max:255',
+            'department_id' => 'required|exists:master_departments,id',
+            'position_id' => 'required|exists:master_positions,id',
+            'employment_status' => 'required|string|in:ACTIVE,RESIGNED,RETIRED,TRANSFERRED,LEAVE',
+            'employment_start_date' => 'required|date',
+            'employment_end_date' => 'nullable|date',
+            'is_assignable' => 'boolean',
+            'primary_skill' => 'nullable|string|max:255',
+            'level' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'linked_user_id' => 'nullable|exists:users,id|unique:employees,linked_user_id,' . $employee->id,
+            'remarks' => 'nullable|string',
+        ]);
+
+        $isAssignable = $request->boolean('is_assignable');
+
+        if ($employee->employee_number !== $validated['employee_number']) {
+            $res = $empNumService->generateNextCode($validated['employee_number'], $employee->id);
+            $employee->employee_index = $res['employee_index'];
+            $employee->employee_code = $res['employee_code'];
+        }
+
+        $employee->update(array_merge($validated, [
+            'is_assignable' => $isAssignable,
+        ]));
+
+        return redirect()->route('admin.index')->with('success', "Data karyawan {$employee->full_name} berhasil diperbarui.");
+    })->name('admin.employees.update');
+
+    Route::post('/admin/users', function (Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|string|exists:roles,name',
+            'linked_employee_id' => 'nullable|exists:employees,id',
+        ]);
+        
+        $user = \App\Models\User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => bcrypt($validated['password']),
+        ]);
+        
+        $user->assignRole($validated['role']);
+        
+        if (!empty($validated['linked_employee_id'])) {
+            $emp = \App\Models\Employee::findOrFail($validated['linked_employee_id']);
+            $emp->update(['linked_user_id' => $user->id]);
+        }
+        
+        return redirect()->route('admin.index')->with('success', "Akun login {$user->email} berhasil ditambahkan.");
+    })->name('admin.users.store');
+
+    Route::put('/admin/users/{user}', function (\App\Models\User $user, Illuminate\Http\Request $request) {
+        $validated = $request->validate([
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'role' => 'required|string|exists:roles,name',
+            'linked_employee_id' => 'nullable|exists:employees,id',
+        ]);
+
+        $user->update([
+            'email' => $validated['email'],
+        ]);
+
+        $user->syncRoles([$validated['role']]);
+
+        \App\Models\Employee::where('linked_user_id', $user->id)->update(['linked_user_id' => null]);
+
+        if (!empty($validated['linked_employee_id'])) {
+            $emp = \App\Models\Employee::findOrFail($validated['linked_employee_id']);
+            $emp->update(['linked_user_id' => $user->id]);
+        }
+
+        return redirect()->route('admin.index')->with('success', "Akun login {$user->email} berhasil diperbarui.");
+    })->name('admin.users.update');
+
+    Route::delete('/admin/users/{user}', function (\App\Models\User $user) {
+        if ($user->id === auth()->id()) {
+            return redirect()->back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+        $user->delete();
+        return redirect()->route('admin.index')->with('success', 'Akun login berhasil dihapus.');
+    })->name('admin.users.destroy');
 
     // Procurement Workflow Module
     Route::resource('procurements', ProcurementCaseController::class);

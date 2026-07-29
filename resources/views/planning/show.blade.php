@@ -16,6 +16,8 @@
             'Ready' => 'bg-green-50 border-green-300 text-green-900 dark:bg-green-950/20 dark:border-green-800 dark:text-green-300',
             'Almost Ready' => 'bg-orange-50 border-orange-300 text-orange-950 dark:bg-orange-950/20 dark:border-orange-800 dark:text-orange-300',
             'Blocked' => 'bg-error-container border-error/30 text-on-error-container',
+            'Reported' => 'bg-rose-50 border-rose-300 text-rose-950 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-300',
+            'Assigned' => 'bg-amber-50 border-amber-300 text-amber-950 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-300',
         };
 
         $statusIcon = match($statusText) {
@@ -24,6 +26,8 @@
             'Ready' => 'check_circle',
             'Almost Ready' => 'warning',
             'Blocked' => 'block',
+            'Reported' => 'report',
+            'Assigned' => 'engineering',
         };
 
         $statusTitle = match($statusText) {
@@ -32,6 +36,8 @@
             'Ready' => 'SIAP EKSEKUSI',
             'Almost Ready' => 'HAMPIR SIAP',
             'Blocked' => 'TERBLOKIR (BLOCKED)',
+            'Reported' => 'DILAPORKAN (REPORTED)',
+            'Assigned' => 'DITUGASKAN (ASSIGNED)',
         };
 
         $statusSub = match($statusText) {
@@ -40,6 +46,8 @@
             'Ready' => 'Semua prasyarat terpenuhi. Rencana pemeliharaan ini aman dan siap untuk dikonversi menjadi perintah kerja (work order).',
             'Almost Ready' => 'Rencana pemeliharaan ini dapat dilanjutkan, namun ada beberapa prasyarat minor yang belum lengkap.',
             'Blocked' => 'Rencana pemeliharaan tidak dapat dieksekusi saat ini karena adanya hambatan kritis pada kondisi mesin atau stok suku cadang.',
+            'Reported' => 'Laporan kerusakan mesin telah didaftarkan ke sistem dan sedang menunggu penugasan teknisi.',
+            'Assigned' => 'Teknisi pemeliharaan telah ditugaskan untuk melakukan perbaikan fisik pada mesin.',
         };
 
         $priorityLabel = match($plan->priority) {
@@ -61,9 +69,19 @@
     <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <div>
-                <span class="text-label-md text-primary font-bold uppercase tracking-wider">Laporan Audit Kesiapan PM</span>
+                <span class="text-label-md text-primary font-bold uppercase tracking-wider">
+                    @if($plan->isCorrective())
+                        Laporan Audit Kerusakan (Corrective)
+                    @else
+                        Laporan Audit Kesiapan PM
+                    @endif
+                </span>
                 <h1 class="font-headline-md text-headline-md text-on-surface mt-1">
-                    Paket Perawatan: {{ $plan->maintenanceTemplate->name }}
+                    @if($plan->isCorrective())
+                        Kerusakan Mesin: {{ $plan->breakdown_number }}
+                    @else
+                        Paket Perawatan: {{ $plan->maintenanceTemplate->name }}
+                    @endif
                 </h1>
                 <p class="text-body-md text-on-surface-variant mt-1">
                     Mesin Sasaran: 
@@ -78,7 +96,7 @@
                     Prioritas: {{ $priorityLabel }}
                 </span>
                 <span class="px-3 py-1 rounded-full text-label-sm font-bold uppercase bg-surface-container text-on-surface-variant">
-                    Siklus: {{ $plan->maintenanceTemplate->maintenance_type }}
+                    Siklus: {{ $plan->isCorrective() ? 'Corrective' : $plan->maintenanceTemplate->maintenance_type }}
                 </span>
             </div>
         </div>
@@ -92,7 +110,13 @@
             </div>
             <div>
                 <span class="block text-xs uppercase font-semibold text-on-surface-variant opacity-60">Estimasi Durasi</span>
-                <span class="font-bold text-on-surface">{{ $plan->maintenanceTemplate->estimated_duration }} Menit</span>
+                <span class="font-bold text-on-surface">
+                    @if($plan->isCorrective())
+                        {{ $plan->downtime_duration ?? '-' }} Menit (Downtime)
+                    @else
+                        {{ $plan->maintenanceTemplate->estimated_duration }} Menit
+                    @endif
+                </span>
             </div>
             <div>
                 <span class="block text-xs uppercase font-semibold text-on-surface-variant opacity-60">Teknisi Ditugaskan</span>
@@ -208,8 +232,11 @@
             <div class="p-3 bg-surface-container rounded-lg flex justify-between items-center text-body-sm">
                 <span>File Manual:</span>
                 <span class="font-semibold text-on-surface truncate max-w-[150px]">
-                    @if($report['documents_available'])
-                        {{ $plan->machine->documents->firstWhere('type', 'manual_book')->file_name }}
+                    @php
+                        $manualBook = $plan->machine->documents->firstWhere('type', 'manual_book');
+                    @endphp
+                    @if($manualBook)
+                        {{ $manualBook->file_name }}
                     @else
                         Tidak Ada
                     @endif
@@ -219,6 +246,7 @@
     </div>
 
     <!-- Detailed Checklist and Sparepart lists from PM Template -->
+    @if(!$plan->isCorrective())
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
         
         <!-- Left Side: Checklist SOP dari Paket Perawatan -->
@@ -297,6 +325,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Notes & Action Footer -->
     @if($plan->notes)
@@ -313,89 +342,236 @@
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-8">
             <h3 class="font-headline-sm text-headline-sm text-on-surface border-b border-outline-variant pb-3 mb-4 uppercase tracking-wider font-extrabold flex items-center gap-2">
                 <span class="material-symbols-outlined text-green-500">task_alt</span>
-                Laporan Eksekusi Pemeliharaan Lapangan
+                Laporan Eksekusi Perbaikan Lapangan
             </h3>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <!-- Metadata -->
-                <div class="md:col-span-2 grid grid-cols-2 gap-4 text-body-sm text-on-surface-variant">
-                    <div>
-                        <span class="block text-xs uppercase font-semibold opacity-60">Teknisi Pelaksana</span>
-                        <span class="font-bold text-on-surface text-sm">{{ $plan->execution->operator_name }}</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs uppercase font-semibold opacity-60">Waktu Pelaksanaan</span>
-                        <span class="font-bold text-on-surface text-sm">
-                            {{ $plan->execution->started_at?->format('d M Y H:i') }} - {{ $plan->execution->completed_at?->format('H:i') }}
-                        </span>
-                    </div>
-                    <div>
-                        <span class="block text-xs uppercase font-semibold opacity-60">Rata-Rata Skor Kondisi</span>
-                        <span class="font-bold text-on-surface text-sm flex items-center gap-1.5 mt-1">
-                            <span class="px-2.5 py-0.5 rounded-lg text-xs font-black {{ $plan->execution->overall_score >= 4.0 ? 'bg-green-100 text-green-800' : ($plan->execution->overall_score >= 3.0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                {{ number_format($plan->execution->overall_score, 2) }} / 5.00
-                            </span>
-                        </span>
-                    </div>
-                    <div>
-                        <span class="block text-xs uppercase font-semibold opacity-60">Status Laporan</span>
-                        <span class="font-bold text-on-surface text-sm">
-                            <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-blue-100 text-blue-800">
-                                {{ $plan->execution->status === 'waiting_review' ? 'Menunggu Review' : 'Disetujui' }}
-                            </span>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- General Photo -->
-                <div class="bg-surface-container border border-outline-variant p-2 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
-                    @php
-                        $genPhoto = $plan->execution->photos->firstWhere('type', 'general');
-                    @endphp
-                    @if($genPhoto && Storage::disk('public')->exists($genPhoto->photo_path))
-                        <img src="{{ asset('storage/' . $genPhoto->photo_path) }}" alt="Foto Eksekusi" class="max-h-32 object-contain rounded shadow" />
-                    @else
-                        <div class="text-center text-slate-400 py-3">
-                            <span class="material-symbols-outlined text-[36px] opacity-40">broken_image</span>
-                            <p class="text-[10px] uppercase font-bold tracking-tight">Foto Tidak Ditemukan</p>
+            @if($plan->isCorrective())
+                <!-- Corrective Maintenance Results -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <!-- Metadata -->
+                    <div class="md:col-span-2 grid grid-cols-2 gap-4 text-body-sm text-on-surface-variant">
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Nama Administrator (Verifikator)</span>
+                            <span class="font-bold text-on-surface text-sm">{{ $plan->execution->operator_name }}</span>
                         </div>
-                    @endif
-                    <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Foto Bukti Lapangan</span>
-                </div>
-            </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Waktu Verifikasi Selesai</span>
+                            <span class="font-bold text-on-surface text-sm">
+                                {{ $plan->execution->completed_at?->format('d M Y H:i') ?? '-' }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Rata-Rata Skor Kondisi</span>
+                            <span class="font-bold text-on-surface text-sm flex items-center gap-1.5 mt-1">
+                                <span class="px-2.5 py-0.5 rounded-lg text-xs font-black {{ $plan->execution->overall_score >= 4.0 ? 'bg-green-100 text-green-800' : ($plan->execution->overall_score >= 3.0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                    {{ number_format($plan->execution->overall_score, 2) }} / 5.00
+                                </span>
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Durasi Downtime</span>
+                            <span class="font-bold text-on-surface text-sm">{{ $plan->downtime_duration ? $plan->downtime_duration . ' Menit' : '-' }}</span>
+                        </div>
+                    </div>
 
-            <!-- Notes -->
-            @if($plan->execution->notes)
-                <div class="bg-surface-container-low border border-outline-variant p-4 rounded-lg text-body-sm text-on-surface mb-6">
-                    <span class="block text-xs uppercase font-bold text-on-surface-variant opacity-60 mb-1">Catatan Tambahan Teknisi</span>
-                    <p class="italic text-on-surface">"{{ $plan->execution->notes }}"</p>
+                    <!-- After Photo -->
+                    <div class="bg-surface-container border border-outline-variant p-2 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
+                        @php
+                            $afterPhoto = $plan->execution->photos->firstWhere('type', 'after');
+                        @endphp
+                        @if($afterPhoto && Storage::disk('public')->exists($afterPhoto->photo_path))
+                            <img src="{{ asset('storage/' . $afterPhoto->photo_path) }}" alt="Foto Setelah Perbaikan" class="max-h-32 object-contain rounded shadow" />
+                        @else
+                            <div class="text-center text-slate-400 py-3">
+                                <span class="material-symbols-outlined text-[36px] opacity-40">broken_image</span>
+                                <p class="text-[10px] uppercase font-bold tracking-tight">Foto Tidak Ditemukan</p>
+                            </div>
+                        @endif
+                        <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Foto Setelah Perbaikan</span>
+                    </div>
+                </div>
+
+                <!-- Before Photo (Optional) -->
+                @php
+                    $beforePhoto = $plan->execution->photos->firstWhere('type', 'before');
+                @endphp
+                @if($beforePhoto && Storage::disk('public')->exists($beforePhoto->photo_path))
+                    <div class="bg-surface-container border border-outline-variant p-4 rounded-xl flex items-center gap-4 mb-6">
+                        <img src="{{ asset('storage/' . $beforePhoto->photo_path) }}" alt="Foto Sebelum Perbaikan" class="max-h-24 object-contain rounded shadow" />
+                        <div>
+                            <span class="block text-xs uppercase font-bold text-on-surface-variant opacity-60">Foto Sebelum Perbaikan (Optional)</span>
+                            <p class="text-xs text-slate-500 mt-1">Kondisi kerusakan awal mesin saat dilaporkan operator.</p>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Consumed Spareparts list -->
+                @if($plan->execution->spareparts->count() > 0)
+                    <div class="mb-6 border-t border-outline-variant/30 pt-4">
+                        <h4 class="font-body-md text-body-md font-bold uppercase tracking-wider text-on-surface-variant mb-3">Suku Cadang yang Digunakan</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            @foreach($plan->execution->spareparts as $esp)
+                                <div class="p-3.5 bg-surface-container-low border border-outline-variant rounded-lg flex justify-between items-center text-body-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary text-[18px]">inventory_2</span>
+                                        <span class="font-bold text-slate-800 font-mono">{{ $esp->warehouse_item_code }}</span>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-bold font-mono text-xs">
+                                        Qty: {{ $esp->quantity }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Notes / Tindakan Korektif -->
+                @if($plan->execution->notes)
+                    @php
+                        $reportData = null;
+                        $cleanedNotes = str_replace("\r", "", $plan->execution->notes);
+                        if (preg_match('/^\[REPORT:(.*)\]$/m', $cleanedNotes, $matches)) {
+                            $reportData = json_decode($matches[1], true);
+                        }
+                    @endphp
+                    @if($reportData)
+                        <div class="bg-surface-container-low border border-outline-variant p-5 rounded-xl space-y-4 text-body-sm text-on-surface mb-6">
+                            <div class="border-b border-outline-variant/30 pb-2">
+                                <h4 class="font-bold text-xs uppercase tracking-wider text-primary">Laporan Penyelesaian Perbaikan</h4>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <span class="block text-[10px] uppercase font-bold text-on-surface-variant opacity-60">Verified By (Verifikator)</span>
+                                    <span class="font-bold text-slate-800">{{ $reportData['verified_by'] ?? '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] uppercase font-bold text-on-surface-variant opacity-60">Repair Performed By (Tim Perbaikan)</span>
+                                    <span class="font-bold text-slate-800">{{ !empty($reportData['team']) ? implode(', ', $reportData['team']) : '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] uppercase font-bold text-on-surface-variant opacity-60">Tipe Perbaikan</span>
+                                    <span class="font-bold text-slate-800">{{ ($reportData['repair_type'] ?? '') === 'Temporary' ? 'Sementara (Temporary)' : 'Permanen' }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-[10px] uppercase font-bold text-on-surface-variant opacity-60">Status Operasional Hasil</span>
+                                    <span class="font-bold text-slate-800">{{ ucfirst($reportData['actual_status'] ?? 'running') }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/40">
+                                <span class="block text-[10px] uppercase font-bold text-amber-700">Masalah Tersisa (Remaining Issues)</span>
+                                <p class="text-xs text-amber-900 mt-1 italic font-medium">
+                                    {{ !empty($reportData['remaining_issues']) ? $reportData['remaining_issues'] : 'Tidak ada.' }}
+                                </p>
+                            </div>
+
+                            <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200/40">
+                                <span class="block text-[10px] uppercase font-bold text-blue-700">Tindakan Lanjutan (Follow-up Action)</span>
+                                <p class="text-xs text-blue-900 mt-1 italic font-medium">
+                                    {{ !empty($reportData['follow_up']) ? $reportData['follow_up'] : '-' }}
+                                </p>
+                            </div>
+
+                            @if(!empty($reportData['user_notes']))
+                                <div class="border-t border-outline-variant/35 pt-3">
+                                    <span class="block text-[10px] uppercase font-bold text-on-surface-variant opacity-60">Catatan Tambahan</span>
+                                    <p class="italic text-on-surface text-xs mt-1">"{{ $reportData['user_notes'] }}"</p>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        @if(!str_contains($plan->execution->notes, '[REPORT:'))
+                            <div class="bg-surface-container-low border border-outline-variant p-4 rounded-lg text-body-sm text-on-surface mb-6">
+                                <span class="block text-xs uppercase font-bold text-on-surface-variant opacity-60 mb-1">Catatan Tambahan &amp; Tindakan Korektif</span>
+                                <p class="italic text-on-surface">"{{ $plan->execution->notes }}"</p>
+                            </div>
+                        @endif
+                    @endif
+                @endif
+
+            @else
+                <!-- Original PM Results -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <!-- Metadata -->
+                    <div class="md:col-span-2 grid grid-cols-2 gap-4 text-body-sm text-on-surface-variant">
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Teknisi Pelaksana</span>
+                            <span class="font-bold text-on-surface text-sm">{{ $plan->execution->operator_name }}</span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Waktu Pelaksanaan</span>
+                            <span class="font-bold text-on-surface text-sm">
+                                {{ $plan->execution->started_at?->format('d M Y H:i') }} - {{ $plan->execution->completed_at?->format('H:i') }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Rata-Rata Skor Kondisi</span>
+                            <span class="font-bold text-on-surface text-sm flex items-center gap-1.5 mt-1">
+                                <span class="px-2.5 py-0.5 rounded-lg text-xs font-black {{ $plan->execution->overall_score >= 4.0 ? 'bg-green-100 text-green-800' : ($plan->execution->overall_score >= 3.0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
+                                    {{ number_format($plan->execution->overall_score, 2) }} / 5.00
+                                </span>
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs uppercase font-semibold opacity-60">Status Laporan</span>
+                            <span class="font-bold text-on-surface text-sm">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold uppercase bg-blue-100 text-blue-800">
+                                    {{ $plan->execution->status === 'waiting_review' ? 'Menunggu Review' : 'Disetujui' }}
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- General Photo -->
+                    <div class="bg-surface-container border border-outline-variant p-2 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
+                        @php
+                            $genPhoto = $plan->execution->photos->firstWhere('type', 'general');
+                        @endphp
+                        @if($genPhoto && Storage::disk('public')->exists($genPhoto->photo_path))
+                            <img src="{{ asset('storage/' . $genPhoto->photo_path) }}" alt="Foto Eksekusi" class="max-h-32 object-contain rounded shadow" />
+                        @else
+                            <div class="text-center text-slate-400 py-3">
+                                <span class="material-symbols-outlined text-[36px] opacity-40">broken_image</span>
+                                <p class="text-[10px] uppercase font-bold tracking-tight">Foto Tidak Ditemukan</p>
+                            </div>
+                        @endif
+                        <span class="text-[9px] font-bold text-slate-400 uppercase mt-1">Foto Bukti Lapangan</span>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                @if($plan->execution->notes)
+                    <div class="bg-surface-container-low border border-outline-variant p-4 rounded-lg text-body-sm text-on-surface mb-6">
+                        <span class="block text-xs uppercase font-bold text-on-surface-variant opacity-60 mb-1">Catatan Tambahan Teknisi</span>
+                        <p class="italic text-on-surface">"{{ $plan->execution->notes }}"</p>
+                    </div>
+                @endif
+
+                <!-- Answers List -->
+                <div>
+                    <h4 class="font-body-md text-body-md font-bold uppercase tracking-wider text-on-surface-variant mb-3">Hasil Evaluasi Checklist</h4>
+                    <div class="space-y-3">
+                        @foreach($plan->execution->answers as $ans)
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-surface-container-low border border-outline-variant rounded-lg">
+                                <div class="flex-1">
+                                    <h5 class="font-body-sm text-body-sm font-bold text-on-surface leading-tight">
+                                        {{ $ans->checklistItem->title }}
+                                    </h5>
+                                    @if($ans->remarks)
+                                        <p class="text-xs text-red-600 mt-1 italic font-medium">Catatan Kerusakan: "{{ $ans->remarks }}"</p>
+                                    @endif
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-xs text-on-surface-variant">Skor:</span>
+                                    <span class="px-3 py-1.5 rounded-xl text-xs font-black text-white {{ $ans->score == 5 ? 'bg-green-600' : ($ans->score >= 3 ? 'bg-amber-500' : 'bg-red-600') }}">
+                                        {{ $ans->score }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             @endif
-
-            <!-- Answers List -->
-            <div>
-                <h4 class="font-body-md text-body-md font-bold uppercase tracking-wider text-on-surface-variant mb-3">Hasil Evaluasi Checklist</h4>
-                <div class="space-y-3">
-                    @foreach($plan->execution->answers as $ans)
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-surface-container-low border border-outline-variant rounded-lg">
-                            <div class="flex-1">
-                                <h5 class="font-body-sm text-body-sm font-bold text-on-surface leading-tight">
-                                    {{ $ans->checklistItem->title }}
-                                </h5>
-                                @if($ans->remarks)
-                                    <p class="text-xs text-red-600 mt-1 italic font-medium">Catatan Kerusakan: "{{ $ans->remarks }}"</p>
-                                @endif
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="text-xs text-on-surface-variant">Skor:</span>
-                                <span class="px-3 py-1.5 rounded-xl text-xs font-black text-white {{ $ans->score == 5 ? 'bg-green-600' : ($ans->score >= 3 ? 'bg-amber-500' : 'bg-red-600') }}">
-                                    {{ $ans->score }}
-                                </span>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
 
         </div>
     @endif

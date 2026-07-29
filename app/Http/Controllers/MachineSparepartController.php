@@ -15,15 +15,25 @@ class MachineSparepartController extends Controller
         protected SparepartLookupRepositoryInterface $sparepartLookupRepository
     ) {}
 
-    /**
-     * Autocomplete search for spareparts from WMS.
-     */
     public function search(Request $request, string $machineCode)
     {
-        Machine::where('code', $machineCode)->firstOrFail();
+        $machine = Machine::where('code', $machineCode)->firstOrFail();
         
         $query = $request->input('q', '');
         $results = $this->sparepartService->searchSpareparts($query);
+        
+        $mappings = \App\Models\MachineRequiredSparepart::where('machine_id', $machine->id)->get()->keyBy('warehouse_item_code');
+        
+        foreach ($results as &$item) {
+            $code = $item['code'];
+            if (isset($mappings[$code])) {
+                $item['lead_time_days'] = $mappings[$code]->lead_time_days;
+                $item['maintenance_criticality'] = $mappings[$code]->maintenance_criticality;
+            } else {
+                $item['lead_time_days'] = null;
+                $item['maintenance_criticality'] = null;
+            }
+        }
         
         return response()->json($results);
     }

@@ -143,7 +143,9 @@ class DashboardController extends Controller
             if (!$rd['technician_assigned']) {
                 $blockers[] = [
                     'type' => 'Technician',
-                    'reason' => "Teknisi pelaksana belum ditunjuk untuk PM {$plan->maintenanceTemplate->name}.",
+                    'reason' => $plan->isCorrective() 
+                        ? "Teknisi pelaksana belum ditunjuk untuk perbaikan kerusakan {$plan->breakdown_number}." 
+                        : "Teknisi pelaksana belum ditunjuk untuk PM {$plan->maintenanceTemplate->name}.",
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->name,
                     'plan_id' => $plan->id,
@@ -249,11 +251,16 @@ class DashboardController extends Controller
 
         foreach ($startedExecs as $exec) {
             $timeString = $exec->started_at->format('H:i');
+            $isCorrective = $exec->plan->isCorrective();
             $timelineEvents[] = [
                 'time' => $timeString,
                 'raw_time' => $exec->started_at,
-                'title' => "PM {$exec->plan->machine->code} Dimulai",
-                'details' => "Teknisi: {$exec->operator_name} (SOP: {$exec->plan->maintenanceTemplate->name})",
+                'title' => $isCorrective 
+                    ? "Perbaikan {$exec->plan->machine->code} Dimulai" 
+                    : "PM {$exec->plan->machine->code} Dimulai",
+                'details' => $isCorrective 
+                    ? "Teknisi: {$exec->operator_name} (No. Breakdown: {$exec->plan->breakdown_number})"
+                    : "Teknisi: {$exec->operator_name} (SOP: {$exec->plan->maintenanceTemplate->name})",
                 'type' => 'started',
                 'color' => 'amber'
             ];
@@ -267,12 +274,13 @@ class DashboardController extends Controller
         foreach ($completedExecs as $exec) {
             $timeString = $exec->completed_at->format('H:i');
             $isWaiting = $exec->status === 'waiting_review';
+            $isCorrective = $exec->plan->isCorrective();
             $timelineEvents[] = [
                 'time' => $timeString,
                 'raw_time' => $exec->completed_at,
-                'title' => $isWaiting 
-                    ? "{$exec->plan->machine->code} Menunggu Review" 
-                    : "PM {$exec->plan->machine->code} Selesai",
+                'title' => $isCorrective 
+                    ? ($isWaiting ? "{$exec->plan->machine->code} Menunggu Verifikasi" : "Perbaikan {$exec->plan->machine->code} Selesai")
+                    : ($isWaiting ? "{$exec->plan->machine->code} Menunggu Review" : "PM {$exec->plan->machine->code} Selesai"),
                 'details' => "Teknisi: {$exec->operator_name} | Nilai: " . number_format($exec->overall_score, 2),
                 'type' => $isWaiting ? 'waiting_review' : 'completed',
                 'color' => $isWaiting ? 'blue' : 'green'

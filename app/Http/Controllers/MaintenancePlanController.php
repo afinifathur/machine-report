@@ -3,17 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Machine;
 use App\Models\MaintenancePlan;
+use App\Enums\MaintenancePlanType;
 use App\Services\MaintenanceReadinessService;
+use App\Services\Maintenance\BreakdownNumberService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MaintenancePlanController extends Controller
 {
     protected MaintenanceReadinessService $readinessService;
+    protected BreakdownNumberService $breakdownNumberService;
 
-    public function __construct(MaintenanceReadinessService $readinessService)
-    {
+    public function __construct(
+        MaintenanceReadinessService $readinessService,
+        BreakdownNumberService $breakdownNumberService
+    ) {
         $this->readinessService = $readinessService;
+        $this->breakdownNumberService = $breakdownNumberService;
     }
 
     /**
@@ -21,11 +30,20 @@ class MaintenancePlanController extends Controller
      */
     public function index(Request $request)
     {
+        $typeFilter = $request->input('type_filter');
+
         $query = MaintenancePlan::with(['machine.documents', 'maintenanceTemplate.checklists', 'maintenanceTemplate.spareparts'])
             ->whereHas('machine', function($q) {
                 $q->where('is_active', true)
                   ->where('lifecycle_status', 'ACTIVE');
             });
+
+        // Filter by type using Enum values
+        if ($typeFilter === MaintenancePlanType::PM->value) {
+            $query->preventive();
+        } elseif ($typeFilter === MaintenancePlanType::CORRECTIVE->value) {
+            $query->corrective();
+        }
 
         // Non-dynamic database filters
         if ($request->filled('search')) {
@@ -52,7 +70,23 @@ class MaintenancePlanController extends Controller
 
         // Calculate and attach readiness report for each plan
         $plans->each(function ($plan) {
-            $plan->readiness = $this->readinessService->getReadinessReport($plan);
+            if ($plan->isCorrective()) {
+                $plan->readiness = [
+                    'overall_status' => $plan->status === 'completed' ? 'Completed' : ($plan->assigned_technician ? 'Assigned' : 'Reported'),
+                    'machine_ready' => false,
+                    'machine_status_text' => 'Kerusakan (Down)',
+                    'template_available' => true,
+                    'checklist_available' => true,
+                    'spareparts_available' => true,
+                    'sparepart_details' => [],
+                    'documents_available' => true,
+                    'technician_assigned' => !empty($plan->assigned_technician),
+                    'blockers' => [],
+                    'warnings' => [],
+                ];
+            } else {
+                $plan->readiness = $this->readinessService->getReadinessReport($plan);
+            }
         });
 
         // Filter by dynamic readiness status in-memory
@@ -68,8 +102,25 @@ class MaintenancePlanController extends Controller
             $q->where('is_active', true)
               ->where('lifecycle_status', 'ACTIVE');
         })->with(['machine', 'maintenanceTemplate.spareparts'])->get();
+        
         $allPlans->each(function ($p) {
-            $p->readiness = $this->readinessService->getReadinessReport($p);
+            if ($p->isCorrective()) {
+                $p->readiness = [
+                    'overall_status' => $p->status === 'completed' ? 'Completed' : ($p->assigned_technician ? 'Assigned' : 'Reported'),
+                    'machine_ready' => false,
+                    'machine_status_text' => 'Kerusakan (Down)',
+                    'template_available' => true,
+                    'checklist_available' => true,
+                    'spareparts_available' => true,
+                    'sparepart_details' => [],
+                    'documents_available' => true,
+                    'technician_assigned' => !empty($p->assigned_technician),
+                    'blockers' => [],
+                    'warnings' => [],
+                ];
+            } else {
+                $p->readiness = $this->readinessService->getReadinessReport($p);
+            }
         });
 
         $totalCount = $allPlans->count();
@@ -88,8 +139,88 @@ class MaintenancePlanController extends Controller
             'totalCount',
             'blockedCount',
             'almostReadyCount',
-            'readyCount'
+            'readyCount',
+            'typeFilter'
         ));
+    }
+
+    /**
+     * Show report breakdown form.
+     */
+    public function reportBreakdown()
+    {
+        $machines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('code')->get();
+        $departments = \App\Models\MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
+        return view('breakdowns.create', compact('machines', 'departments'));
+    }
+
+    /**
+     * Store reported breakdown and update machine status.
+     */
+    public function storeBreakdown(Request $request)
+    {
+        $validated = $request->validate([
+            'machine_id' => 'required|exists:machines,id',
+            'reported_by' => 'required|string|max:255',
+            'reported_department' => 'required|string|max:255',
+            'breakdown_description' => 'required|string',
+            'reported_at' => 'nullable|date',
+            'priority' => 'nullable|string|in:low,medium,high,critical',
+            'scheduled_date' => 'nullable|date',
+        ]);
+
+        $machine = Machine::findOrFail($validated['machine_id']);
+        
+        $breakdownNumber = $this->breakdownNumberService->generateNextNumber();
+
+        DB::transaction(function () use ($validated, $machine, $breakdownNumber) {
+            MaintenancePlan::create([
+                'machine_id' => $machine->id,
+                'maintenance_template_id' => null,
+                'scheduled_date' => !empty($validated['scheduled_date']) ? Carbon::parse($validated['scheduled_date']) : now(),
+                'priority' => $validated['priority'] ?? 'high',
+                'status' => 'reported',
+                'type' => MaintenancePlanType::CORRECTIVE,
+                'breakdown_number' => $breakdownNumber,
+                'reported_at' => !empty($validated['reported_at']) ? Carbon::parse($validated['reported_at']) : now(),
+                'reported_by' => $validated['reported_by'],
+                'reported_department' => $validated['reported_department'],
+                'notes' => $validated['breakdown_description'],
+                'generation_source' => 'Manual',
+            ]);
+
+            $machine->update([
+                'operational_status' => 'breakdown',
+            ]);
+        });
+
+        return redirect()->route('planning.index')
+            ->with('success', "Breakdown reported successfully: {$breakdownNumber}");
+    }
+
+    /**
+     * Assign a technician to the breakdown ticket.
+     */
+    public function assignTechnician(Request $request, MaintenancePlan $plan)
+    {
+        $validated = $request->validate([
+            'assigned_technician' => 'required|string|max:255',
+        ]);
+
+        if ($plan->type !== MaintenancePlanType::CORRECTIVE) {
+            return redirect()->back()->with('error', 'Rencana bukan bertipe corrective.');
+        }
+
+        if ($plan->status !== 'reported') {
+            return redirect()->back()->with('error', 'Status rencana harus reported untuk menunjuk teknisi.');
+        }
+
+        $plan->update([
+            'assigned_technician' => $validated['assigned_technician'],
+            'status' => 'assigned',
+        ]);
+
+        return redirect()->back()->with('success', 'Teknisi berhasil ditugaskan.');
     }
 
     /**
@@ -105,8 +236,26 @@ class MaintenancePlanController extends Controller
             'execution.photos'
         ]);
         
-        $report = $this->readinessService->getReadinessReport($plan);
+        if ($plan->isCorrective()) {
+            $report = [
+                'plan_id' => $plan->id,
+                'overall_status' => $plan->status === 'completed' ? 'Completed' : ($plan->assigned_technician ? 'Assigned' : 'Reported'),
+                'machine_ready' => false,
+                'machine_status_text' => 'Kerusakan (Down)',
+                'template_available' => true,
+                'checklist_available' => true,
+                'spareparts_available' => true,
+                'sparepart_details' => [],
+                'documents_available' => true,
+                'technician_assigned' => !empty($plan->assigned_technician),
+                'blockers' => [],
+                'warnings' => [],
+            ];
+        } else {
+            $report = $this->readinessService->getReadinessReport($plan);
+        }
 
         return view('planning.show', compact('plan', 'report'));
     }
 }
+
