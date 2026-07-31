@@ -211,4 +211,74 @@ class PlanningDelayAndReadinessTest extends TestCase
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertNotEmpty($response->getContent());
     }
+
+    /**
+     * Verify PDF generation endpoint is resilient to unknown and unexpected sparepart statuses.
+     */
+    public function test_work_order_pdf_generation_with_unknown_and_unexpected_sparepart_statuses(): void
+    {
+        $user = \App\Models\User::factory()->create();
+        $this->actingAs($user);
+
+        // Mock the MachineSparepartService to return spareparts with unexpected DTO and status shapes
+        $this->mock(\App\Integrations\WMS\Services\MachineSparepartService::class, function ($mock) {
+            $mock->shouldReceive('getMachineSparepartsView')
+                ->andReturn([
+                    [
+                        'qty_per_machine' => 2,
+                        'dto' => new \App\Integrations\WMS\DTOs\SparepartItemDTO(
+                            erpCode: 'PART-A',
+                            variantId: 10,
+                            name: 'Part A',
+                            brand: 'Brand',
+                            unit: 'pcs',
+                            barcode: '111',
+                            location: 'Location',
+                            supplier: 'Supplier',
+                            stock: 10,
+                            weeklyAverage: 1.0,
+                            category: 'Category',
+                            isAvailable: true,
+                            isOffline: false,
+                            mappingId: 1
+                        ),
+                        'status' => 'StringStatus' // Unexpected string type instead of array
+                    ],
+                    [
+                        'qty_per_machine' => 1,
+                        'dto' => null, // Unexpected null DTO
+                        'status' => null // Unexpected null status
+                    ],
+                    [
+                        'qty_per_machine' => 4,
+                        'dto' => new \App\Integrations\WMS\DTOs\SparepartItemDTO(
+                            erpCode: 'PART-B',
+                            variantId: 20,
+                            name: 'Part B',
+                            brand: 'Brand',
+                            unit: 'pcs',
+                            barcode: '222',
+                            location: 'Location',
+                            supplier: 'Supplier',
+                            stock: 10,
+                            weeklyAverage: 1.0,
+                            category: 'Category',
+                            isAvailable: true,
+                            isOffline: false,
+                            mappingId: 2
+                        ),
+                        'status' => [
+                            'code' => 'custom_weird_status',
+                            'label' => 'Custom'
+                        ]
+                    ]
+                ]);
+        });
+
+        $response = $this->get(route('planning.print', $this->planPm->id));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
 }

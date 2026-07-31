@@ -338,7 +338,7 @@
 
     <!-- Sparepart Section -->
     <div class="section-title">5. Required Spareparts List</div>
-    @if (count($displayedSpareparts) > 0)
+    @if (count($normalizedSpareparts) > 0)
         <table class="checklist-table" style="margin-bottom: 4px;">
             <thead>
                 <tr>
@@ -349,14 +349,14 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($displayedSpareparts as $part)
+                @foreach ($normalizedSpareparts as $part)
                     <tr>
-                        <td class="font-mono font-bold">{{ $part['code'] }}</td>
+                        <td class="font-mono font-bold">{{ $part['erp_code'] }}</td>
                         <td>{{ $part['name'] }}</td>
-                        <td class="text-center font-bold">{{ $part['quantity_required'] ?? 1 }} pcs</td>
+                        <td class="text-center font-bold">{{ $part['quantity_required'] }} pcs</td>
                         <td class="text-center">
-                            <span class="badge @if($part['status'] === 'critical') badge-red @elseif($part['status'] === 'reorder') badge-orange @else badge-blue @endif">
-                                {{ $part['status'] }}
+                            <span class="badge {{ $part['status_badge_class'] }}">
+                                {{ $part['status_label'] }}
                             </span>
                         </td>
                     </tr>

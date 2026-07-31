@@ -116,12 +116,16 @@ class MaintenanceReadinessService
         $sparepartReadinessDetails = [];
 
         foreach ($mappedSpareparts as $item) {
-            $code = $item['dto']->erpCode;
-            $name = $item['dto']->name;
-            $required = $item['qty_per_machine'];
-            $available = $item['dto']->stock;
-            $statusLabel = $item['status']['label'] ?? 'Unknown';
-            $statusCode = $item['status']['code'] ?? 'unknown';
+            $dto = $item['dto'] ?? null;
+            $status = $item['status'] ?? [];
+            
+            $code = $dto ? ($dto->erpCode ?? '?') : '?';
+            $name = $dto ? ($dto->name ?? 'Unknown') : 'Unknown';
+            $required = $item['qty_per_machine'] ?? 1;
+            $available = $dto ? ($dto->stock ?? 0) : 0;
+            
+            $statusLabel = is_array($status) ? ($status['label'] ?? 'Unknown') : 'Unknown';
+            $statusCode = is_array($status) ? ($status['code'] ?? 'unknown') : 'unknown';
 
             $isPartReady = $available >= $required && !in_array($statusCode, ['critical', 'reorder']);
             if (!$isPartReady) {
@@ -135,8 +139,8 @@ class MaintenanceReadinessService
                 'available' => $available,
                 'status' => $statusLabel,
                 'status_code' => $statusCode,
-                'badge_class' => $item['status']['badge_class'] ?? '',
-                'icon' => $item['status']['icon'] ?? '',
+                'badge_class' => is_array($status) ? ($status['badge_class'] ?? '') : '',
+                'icon' => is_array($status) ? ($status['icon'] ?? '') : '',
                 'is_ready' => $isPartReady
             ];
         }
