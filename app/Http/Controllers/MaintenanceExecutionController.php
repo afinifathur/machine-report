@@ -126,11 +126,21 @@ class MaintenanceExecutionController extends Controller
         }
 
         // Create validator for PM
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'operator_name' => 'required|string',
             'started_at' => 'required|date_format:Y-m-d H:i:s',
             'photo' => 'required|image|max:10240', // Max 10MB upload
             'notes' => 'nullable|string',
+        ];
+
+        if ($plan->target_completion && now()->gt($plan->target_completion)) {
+            $rules['delay_reason'] = 'required|string|in:waiting_sparepart,waiting_production,waiting_vendor,waiting_approval,additional_damage,manpower_shortage,power_failure,other';
+            $rules['delay_notes'] = 'required_if:delay_reason,other|nullable|string';
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
+            'delay_reason.required' => 'Alasan keterlambatan wajib diisi karena melewati target waktu penyelesaian.',
+            'delay_notes.required_if' => 'Catatan keterlambatan wajib diisi jika memilih alasan Lainnya.',
         ]);
 
         // Evaluate answers and apply conditional validation rules for PM
@@ -207,7 +217,22 @@ class MaintenanceExecutionController extends Controller
             }
 
             // 6. Complete the plan so Planning Board updates immediately
-            $plan->update(['status' => 'completed']);
+            $actualCompletion = now();
+            $delayReason = null;
+            $delayNotes = null;
+
+            if ($plan->target_completion && $actualCompletion->gt($plan->target_completion)) {
+                $delayReason = $request->input('delay_reason');
+                $delayNotes = $request->input('delay_notes');
+            }
+
+            $plan->update([
+                'status' => 'completed',
+                'completed_at' => $actualCompletion,
+                'actual_completion' => $actualCompletion,
+                'delay_reason' => $delayReason,
+                'delay_notes' => $delayNotes,
+            ]);
 
             DB::commit();
 
@@ -227,7 +252,7 @@ class MaintenanceExecutionController extends Controller
      */
     protected function storeCorrective(Request $request, MaintenancePlan $plan)
     {
-        $request->validate([
+        $rules = [
             'operator_name' => 'required|string',
             'photo' => 'required|image|max:10240', // Required after photo
             'photo_before' => 'nullable|image|max:10240', // Optional before photo
@@ -235,6 +260,16 @@ class MaintenanceExecutionController extends Controller
             'overall_score' => 'required|integer|between:1,5',
             'notes' => 'nullable|string',
             'spareparts' => 'nullable|array',
+        ];
+
+        if ($plan->target_completion && now()->gt($plan->target_completion)) {
+            $rules['delay_reason'] = 'required|string|in:waiting_sparepart,waiting_production,waiting_vendor,waiting_approval,additional_damage,manpower_shortage,power_failure,other';
+            $rules['delay_notes'] = 'required_if:delay_reason,other|nullable|string';
+        }
+
+        $request->validate($rules, [
+            'delay_reason.required' => 'Alasan keterlambatan wajib diisi karena melewati target waktu penyelesaian.',
+            'delay_notes.required_if' => 'Catatan keterlambatan wajib diisi jika memilih alasan Lainnya.',
         ]);
 
         DB::beginTransaction();
@@ -299,10 +334,21 @@ class MaintenanceExecutionController extends Controller
             ]);
 
             // Complete the plan
+            $delayReason = null;
+            $delayNotes = null;
+
+            if ($plan->target_completion && $completedAt->gt($plan->target_completion)) {
+                $delayReason = $request->input('delay_reason');
+                $delayNotes = $request->input('delay_notes');
+            }
+
             $plan->update([
                 'status' => 'completed',
                 'completed_at' => $completedAt,
                 'downtime_duration' => $downtimeDuration,
+                'actual_completion' => $completedAt,
+                'delay_reason' => $delayReason,
+                'delay_notes' => $delayNotes,
             ]);
 
             DB::commit();
@@ -319,31 +365,16 @@ class MaintenanceExecutionController extends Controller
     }
 
     /**
-     * Render printable Work Order briefing sheet.
+     * Render printable Work Order briefing sheet (PDF).
      */
-    public function print(MaintenancePlan $plan)
+    public function print(MaintenancePlan $plan, \App\Services\WorkOrderPdfService $pdfService)
     {
-        $plan->load([
-            'machine.documents',
-            'maintenanceTemplate.checklists',
-            'maintenanceTemplate.spareparts'
+        $pdfContent = $pdfService->generatePdf($plan);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="work_order_' . $plan->id . '.pdf"',
         ]);
-
-        // Find previous execution notes for technician briefing
-        $previousExecution = MaintenanceExecution::where('machine_id', $plan->machine_id)
-            ->orderBy('completed_at', 'desc')
-            ->first();
-
-        // Generate offline SVG QR code
-        $qrOptions = new QROptions([
-            'outputBase64' => true,
-            'scale' => 5,
-            'eccLevel' => EccLevel::L,
-        ]);
-        $executionUrl = route('planning.execute', $plan->id);
-        $qrCodeImage = (new QRCode($qrOptions))->render($executionUrl);
-
-        return view('planning.print', compact('plan', 'previousExecution', 'qrCodeImage'));
     }
 }
 

@@ -368,6 +368,91 @@
                     <input type="hidden" name="notes" id="notes" />
                 </div>
 
+                @php
+                    $isOverdue = $plan->target_completion && now()->gt($plan->target_completion);
+                    $delayDuration = '';
+                    if ($isOverdue) {
+                        $diff = now()->diff($plan->target_completion);
+                        $parts = [];
+                        if ($diff->d > 0) $parts[] = $diff->d . ' Days';
+                        if ($diff->h > 0) $parts[] = $diff->h . ' Hours';
+                        if ($diff->i > 0) $parts[] = $diff->i . ' Minutes';
+                        $delayDuration = implode(' ', $parts);
+                    }
+                @endphp
+
+                @if($plan->target_completion)
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+                        <h3 class="text-sm font-bold text-slate-800 mb-0.5">Analisis Waktu Target</h3>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Target Selesai</span>
+                                <span class="text-slate-800 font-bold text-sm">{{ $plan->target_completion->format('d M Y H:i') }}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Waktu Sekarang (Verifikasi)</span>
+                                <span class="text-slate-800 font-bold text-sm">{{ now()->format('d M Y H:i') }}</span>
+                            </div>
+                        </div>
+
+                        @if($isOverdue)
+                            <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2">
+                                <span class="material-symbols-outlined text-rose-600 mt-0.5">warning</span>
+                                <div>
+                                    <strong class="font-bold">Terlambat dari Target (Overdue)</strong>
+                                    <p class="mt-0.5 text-rose-700 font-medium">Late by: {{ $delayDuration }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Delay Analysis Section (Mandatory) -->
+                            <div class="border-t border-slate-100 pt-3 space-y-3">
+                                <h4 class="text-xs font-bold uppercase text-slate-400">Analisis Keterlambatan (Wajib)</h4>
+                                
+                                <div class="space-y-1">
+                                    <label for="delay_reason_corrective" class="block text-[10px] font-bold uppercase text-slate-500">Alasan Keterlambatan</label>
+                                    <select name="delay_reason" id="delay_reason_corrective" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Pilih Alasan Keterlambatan --</option>
+                                        <option value="waiting_sparepart">Waiting Sparepart (Menunggu Suku Cadang)</option>
+                                        <option value="waiting_production">Waiting Production (Menunggu Produksi)</option>
+                                        <option value="waiting_vendor">Waiting Vendor (Menunggu Vendor)</option>
+                                        <option value="waiting_approval">Waiting Approval (Menunggu Persetujuan)</option>
+                                        <option value="additional_damage">Additional Damage Found (Kerusakan Tambahan Ditemukan)</option>
+                                        <option value="manpower_shortage">Manpower Shortage (Kekurangan Personel)</option>
+                                        <option value="power_failure">Power Failure (Kegagalan Listrik/Daya)</option>
+                                        <option value="other">Other (Lainnya)</option>
+                                    </select>
+                                </div>
+
+                                <div id="delay_notes_container_corrective" class="hidden space-y-1">
+                                    <label for="delay_notes_corrective" class="block text-[10px] font-bold uppercase text-slate-500">Catatan Detail Keterlambatan</label>
+                                    <textarea name="delay_notes" id="delay_notes_corrective" rows="2" placeholder="Jelaskan detail alasan keterlambatan..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                </div>
+                            </div>
+                            
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const selectEl = document.getElementById('delay_reason_corrective');
+                                    const notesContainer = document.getElementById('delay_notes_container_corrective');
+                                    const notesTextarea = document.getElementById('delay_notes_corrective');
+
+                                    if (selectEl) {
+                                        selectEl.addEventListener('change', function() {
+                                            if (this.value === 'other') {
+                                                notesContainer.classList.remove('hidden');
+                                                notesTextarea.setAttribute('required', 'required');
+                                                notesTextarea.focus();
+                                            } else {
+                                                notesContainer.classList.add('hidden');
+                                                notesTextarea.removeAttribute('required');
+                                            }
+                                        });
+                                    }
+                                });
+                            </script>
+                        @endif
+                    </div>
+                @endif
+
                 <!-- Submit Button -->
                 <div class="pt-4 pb-8">
                     <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base rounded-2xl shadow-lg shadow-emerald-100 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2">
@@ -827,6 +912,91 @@
                         <textarea name="notes" id="notes" rows="2" placeholder="Tuliskan temuan atau catatan umum jika ada..." class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ old('notes') }}</textarea>
                     </div>
                 </div>
+
+                @php
+                    $isOverduePM = $plan->target_completion && now()->gt($plan->target_completion);
+                    $delayDurationPM = '';
+                    if ($isOverduePM) {
+                        $diffPM = now()->diff($plan->target_completion);
+                        $partsPM = [];
+                        if ($diffPM->d > 0) $partsPM[] = $diffPM->d . ' Days';
+                        if ($diffPM->h > 0) $partsPM[] = $diffPM->h . ' Hours';
+                        if ($diffPM->i > 0) $partsPM[] = $diffPM->i . ' Minutes';
+                        $delayDurationPM = implode(' ', $partsPM);
+                    }
+                @endphp
+
+                @if($plan->target_completion)
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-3">
+                        <h3 class="text-sm font-bold text-slate-800 mb-0.5">Analisis Waktu Target</h3>
+                        <div class="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Target Selesai</span>
+                                <span class="text-slate-800 font-bold text-sm">{{ $plan->target_completion->format('d M Y H:i') }}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block text-[10px] uppercase">Waktu Sekarang (Verifikasi)</span>
+                                <span class="text-slate-800 font-bold text-sm">{{ now()->format('d M Y H:i') }}</span>
+                            </div>
+                        </div>
+
+                        @if($isOverduePM)
+                            <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2">
+                                <span class="material-symbols-outlined text-rose-600 mt-0.5">warning</span>
+                                <div>
+                                    <strong class="font-bold">Terlambat dari Target (Overdue)</strong>
+                                    <p class="mt-0.5 text-rose-700 font-medium">Late by: {{ $delayDurationPM }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Delay Analysis Section (Mandatory) -->
+                            <div class="border-t border-slate-100 pt-3 space-y-3">
+                                <h4 class="text-xs font-bold uppercase text-slate-400">Analisis Keterlambatan (Wajib)</h4>
+                                
+                                <div class="space-y-1">
+                                    <label for="delay_reason_pm" class="block text-[10px] font-bold uppercase text-slate-500">Alasan Keterlambatan</label>
+                                    <select name="delay_reason" id="delay_reason_pm" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Pilih Alasan Keterlambatan --</option>
+                                        <option value="waiting_sparepart">Waiting Sparepart (Menunggu Suku Cadang)</option>
+                                        <option value="waiting_production">Waiting Production (Menunggu Produksi)</option>
+                                        <option value="waiting_vendor">Waiting Vendor (Menunggu Vendor)</option>
+                                        <option value="waiting_approval">Waiting Approval (Menunggu Persetujuan)</option>
+                                        <option value="additional_damage">Additional Damage Found (Kerusakan Tambahan Ditemukan)</option>
+                                        <option value="manpower_shortage">Manpower Shortage (Kekurangan Personel)</option>
+                                        <option value="power_failure">Power Failure (Kegagalan Listrik/Daya)</option>
+                                        <option value="other">Other (Lainnya)</option>
+                                    </select>
+                                </div>
+
+                                <div id="delay_notes_container_pm" class="hidden space-y-1">
+                                    <label for="delay_notes_pm" class="block text-[10px] font-bold uppercase text-slate-500">Catatan Detail Keterlambatan</label>
+                                    <textarea name="delay_notes" id="delay_notes_pm" rows="2" placeholder="Jelaskan detail alasan keterlambatan..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                </div>
+                            </div>
+                            
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const selectEl = document.getElementById('delay_reason_pm');
+                                    const notesContainer = document.getElementById('delay_notes_container_pm');
+                                    const notesTextarea = document.getElementById('delay_notes_pm');
+
+                                    if (selectEl) {
+                                        selectEl.addEventListener('change', function() {
+                                            if (this.value === 'other') {
+                                                notesContainer.classList.remove('hidden');
+                                                notesTextarea.setAttribute('required', 'required');
+                                                notesTextarea.focus();
+                                            } else {
+                                                notesContainer.classList.add('hidden');
+                                                notesTextarea.removeAttribute('required');
+                                            }
+                                        });
+                                    }
+                                });
+                            </script>
+                        @endif
+                    </div>
+                @endif
 
                 <!-- Submit Button -->
                 <div class="pt-4 pb-8">

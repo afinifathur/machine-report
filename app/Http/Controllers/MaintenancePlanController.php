@@ -236,26 +236,47 @@ class MaintenancePlanController extends Controller
             'execution.photos'
         ]);
         
-        if ($plan->isCorrective()) {
-            $report = [
-                'plan_id' => $plan->id,
-                'overall_status' => $plan->status === 'completed' ? 'Completed' : ($plan->assigned_technician ? 'Assigned' : 'Reported'),
-                'machine_ready' => false,
-                'machine_status_text' => 'Kerusakan (Down)',
-                'template_available' => true,
-                'checklist_available' => true,
-                'spareparts_available' => true,
-                'sparepart_details' => [],
-                'documents_available' => true,
-                'technician_assigned' => !empty($plan->assigned_technician),
-                'blockers' => [],
-                'warnings' => [],
-            ];
-        } else {
-            $report = $this->readinessService->getReadinessReport($plan);
+        $report = $this->readinessService->getReadinessReport($plan);
+
+        // Adjust overall status for reported/assigned corrective plans if needed
+        if ($plan->isCorrective() && !in_array($plan->status, ['completed', 'waiting_review'])) {
+            $report['overall_status'] = $plan->assigned_technician ? 'Assigned' : 'Reported';
         }
 
         return view('planning.show', compact('plan', 'report'));
+    }
+
+    /**
+     * Update the maintenance plan target completion and scheduling details.
+     */
+    public function update(Request $request, MaintenancePlan $plan)
+    {
+        $rules = [
+            'target_completion' => 'nullable|date',
+            'notes' => 'nullable|string',
+            'priority' => 'nullable|string|in:low,medium,high,critical',
+        ];
+
+        // Only allow updating technician if not completed
+        if ($plan->status !== 'completed') {
+            $rules['assigned_technician'] = 'nullable|string|max:255';
+        }
+
+        $validated = $request->validate($rules);
+
+        if (!empty($validated['target_completion'])) {
+            $validated['target_completion'] = \Carbon\Carbon::parse($validated['target_completion']);
+        }
+
+        $plan->update($validated);
+
+        // Handle corrective state transitions
+        if ($plan->isCorrective() && $plan->status === 'reported' && !empty($plan->assigned_technician)) {
+            $plan->update(['status' => 'assigned']);
+        }
+
+        return redirect()->route('planning.show', $plan->id)
+            ->with('success', 'Rencana perawatan berhasil diperbarui.');
     }
 }
 

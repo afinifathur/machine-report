@@ -8,10 +8,14 @@ use App\Repositories\WarehouseRepositoryInterface;
 class MaintenanceReadinessService
 {
     protected WarehouseRepositoryInterface $warehouseRepository;
+    protected \App\Integrations\WMS\Services\MachineSparepartService $machineSparepartService;
 
-    public function __construct(WarehouseRepositoryInterface $warehouseRepository)
-    {
+    public function __construct(
+        WarehouseRepositoryInterface $warehouseRepository,
+        \App\Integrations\WMS\Services\MachineSparepartService $machineSparepartService
+    ) {
         $this->warehouseRepository = $warehouseRepository;
+        $this->machineSparepartService = $machineSparepartService;
     }
 
     /**
@@ -34,6 +38,8 @@ class MaintenanceReadinessService
                 'sparepart_details' => [],
                 'documents_available' => true,
                 'technician_assigned' => true,
+                'sparepart_readiness_ready' => true,
+                'mapped_spareparts' => [],
                 'blockers' => [],
                 'warnings' => [],
             ];
@@ -55,13 +61,13 @@ class MaintenanceReadinessService
             default => ucfirst($machine->operational_status),
         } : 'Tidak Ditemukan';
 
-        // 2. Template Available
-        $templateAvailable = $template && $template->is_active;
+        // 2. Template Available (PM only, always true for corrective)
+        $templateAvailable = $plan->isCorrective() ? true : ($template && $template->is_active);
 
-        // 3. Checklist Available
-        $checklistAvailable = $template && $template->checklists->count() > 0;
+        // 3. Checklist Available (PM only, always true for corrective)
+        $checklistAvailable = $plan->isCorrective() ? true : ($template && $template->checklists->count() > 0);
 
-        // 4. Required Spareparts Available
+        // 4. Required Spareparts Available (Mandatory SOP - PM only)
         $sparepartsAvailable = true;
         $sparepartDetails = [];
         $insufficientParts = [];
@@ -104,11 +110,41 @@ class MaintenanceReadinessService
         // 6. Technician Assigned
         $technicianAssigned = !empty($plan->assigned_technician);
 
-        // 7. Determine Overall Readiness Status
-        // Blocked: Machine is down, template missing, or spareparts are insufficient
-        // Ready: All 6 checks are green
-        // Almost Ready: Machine and parts are ready, but checklist, documents, or technician is missing/pending
-        if (!$templateAvailable || !$machineReady || !$sparepartsAvailable) {
+        // 7. Mapped Spareparts Stock Status (Sparepart Readiness Audit)
+        $mappedSpareparts = $machine ? $this->machineSparepartService->getMachineSparepartsView($machine) : [];
+        $sparepartReadinessReady = true;
+        $sparepartReadinessDetails = [];
+
+        foreach ($mappedSpareparts as $item) {
+            $code = $item['dto']->erpCode;
+            $name = $item['dto']->name;
+            $required = $item['qty_per_machine'];
+            $available = $item['dto']->stock;
+            $statusLabel = $item['status']['label'] ?? 'Unknown';
+            $statusCode = $item['status']['code'] ?? 'unknown';
+
+            $isPartReady = $available >= $required && !in_array($statusCode, ['critical', 'reorder']);
+            if (!$isPartReady) {
+                $sparepartReadinessReady = false;
+            }
+
+            $sparepartReadinessDetails[] = [
+                'code' => $code,
+                'name' => $name,
+                'required' => $required,
+                'available' => $available,
+                'status' => $statusLabel,
+                'status_code' => $statusCode,
+                'badge_class' => $item['status']['badge_class'] ?? '',
+                'icon' => $item['status']['icon'] ?? '',
+                'is_ready' => $isPartReady
+            ];
+        }
+
+        // 8. Determine Overall Readiness Status
+        // Blocked only if machine is down or template is inactive/missing
+        // Spareparts shortages are treated as warnings to provide visibility without blocking execution or demoting status
+        if (!$templateAvailable || !$machineReady) {
             $overallStatus = 'Blocked'; // Terblokir
         } elseif ($checklistAvailable && $documentsAvailable && $technicianAssigned) {
             $overallStatus = 'Ready'; // Siap
@@ -116,7 +152,7 @@ class MaintenanceReadinessService
             $overallStatus = 'Almost Ready'; // Hampir Siap
         }
 
-        // 8. Compile Blockers and Warnings
+        // 9. Compile Blockers and Warnings
         $blockers = [];
         $warnings = [];
 
@@ -126,8 +162,13 @@ class MaintenanceReadinessService
         if (!$templateAvailable) {
             $blockers[] = "Paket Perawatan (SOP) tidak aktif atau tidak ditemukan.";
         }
+
+        // Spareparts shortages moved to warnings
         foreach ($insufficientParts as $part) {
-            $blockers[] = "Stok WMS kurang untuk {$part['code']} ({$part['name']}): dibutuhkan {$part['required']}, tersedia {$part['available']}.";
+            $warnings[] = "Stok WMS kurang untuk {$part['code']} ({$part['name']}): dibutuhkan {$part['required']}, tersedia {$part['available']}.";
+        }
+        if (!$sparepartReadinessReady) {
+            $warnings[] = "Beberapa suku cadang mesin yang terpetakan berada dalam kondisi kritis atau perlu reorder.";
         }
 
         if ($templateAvailable && !$checklistAvailable) {
@@ -151,6 +192,8 @@ class MaintenanceReadinessService
             'sparepart_details' => $sparepartDetails,
             'documents_available' => $documentsAvailable,
             'technician_assigned' => $technicianAssigned,
+            'sparepart_readiness_ready' => $sparepartReadinessReady,
+            'mapped_spareparts' => $sparepartReadinessDetails,
             'blockers' => $blockers,
             'warnings' => $warnings,
         ];

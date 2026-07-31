@@ -103,7 +103,7 @@
 
         <hr class="border-outline-variant my-4" />
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-body-sm text-on-surface-variant">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-body-sm text-on-surface-variant">
             <div>
                 <span class="block text-xs uppercase font-semibold text-on-surface-variant opacity-60">Jadwal Rencana</span>
                 <span class="font-bold text-on-surface">{{ $plan->scheduled_date->format('d M Y') }}</span>
@@ -123,11 +123,71 @@
                 <span class="font-bold text-on-surface">{{ $plan->assigned_technician ?? 'Belum Ditugaskan' }}</span>
             </div>
             <div>
+                <span class="block text-xs uppercase font-semibold text-on-surface-variant opacity-60">Target Selesai</span>
+                <span class="font-bold text-on-surface font-mono text-primary">{{ $plan->target_completion ? $plan->target_completion->format('d M Y H:i') : '-' }}</span>
+            </div>
+            <div>
                 <span class="block text-xs uppercase font-semibold text-on-surface-variant opacity-60">Metode Pembuatan</span>
                 <span class="font-bold text-on-surface">{{ $plan->generation_source }}</span>
             </div>
         </div>
     </div>
+
+    @if($plan->status !== 'completed')
+        <!-- Adjust target completion and plan details form -->
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-6">
+            <h3 class="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2 font-bold">
+                <span class="material-symbols-outlined text-primary">edit_calendar</span>
+                Sesuaikan Target Selesai &amp; Detail Perencanaan
+            </h3>
+            <form action="{{ route('planning.update', $plan->id) }}" method="POST" class="space-y-4">
+                @csrf
+                @method('PUT')
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="target_completion" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Target Waktu Penyelesaian</label>
+                        <input type="datetime-local" name="target_completion" id="target_completion" 
+                               value="{{ $plan->target_completion ? $plan->target_completion->format('Y-m-d\TH:i') : '' }}"
+                               class="w-full p-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono text-primary font-bold" />
+                    </div>
+
+                    <div>
+                        <label for="assigned_technician" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Teknisi Pelaksana</label>
+                        <x-employee-autocomplete 
+                            name="assigned_technician" 
+                            id="assigned_technician" 
+                            selected="{{ old('assigned_technician', $plan->assigned_technician) }}"
+                            required="false"
+                            placeholder="Cari nama teknisi..."
+                        />
+                    </div>
+
+                    <div>
+                        <label for="priority" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Prioritas</label>
+                        <select name="priority" id="priority" class="w-full p-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-bold">
+                            <option value="low" {{ $plan->priority === 'low' ? 'selected' : '' }}>Rendah (Low)</option>
+                            <option value="medium" {{ $plan->priority === 'medium' ? 'selected' : '' }}>Sedang (Medium)</option>
+                            <option value="high" {{ $plan->priority === 'high' ? 'selected' : '' }}>Tinggi (High)</option>
+                            <option value="critical" {{ $plan->priority === 'critical' ? 'selected' : '' }}>Kritis (Critical)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="notes" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Catatan Tambahan</label>
+                    <textarea name="notes" id="notes" rows="2" placeholder="Catatan atau instruksi khusus untuk teknisi..."
+                              class="w-full p-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary italic text-slate-700">{{ $plan->notes }}</textarea>
+                </div>
+
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-primary hover:bg-primary/95 text-on-primary px-5 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    @endif
 
     <!-- Overall Readiness Banner -->
     <div class="border rounded-xl p-5 flex items-start gap-4 mb-8 shadow-sm {{ $bannerClasses }}">
@@ -163,7 +223,7 @@
     </div>
 
     <!-- Subsystem Auditing Bento Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         
         <!-- Grid 1: Kondisi Aset Mesin -->
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col justify-between">
@@ -178,7 +238,7 @@
                     {{ $report['machine_ready'] ? 'Aset Operasional' : 'Aset Terganggu' }}
                 </h5>
                 <p class="text-body-sm text-on-surface-variant mb-4">
-                    Mesin harus dalam keadaan 'Running' atau 'Idle' agar pemeliharaan preventif terjadwal berjalan lancar.
+                    Mesin harus dalam keadaan 'Running' atau 'Idle' agar pemeliharaan preventif berjalan lancar.
                 </p>
             </div>
             <div class="p-3 bg-surface-container rounded-lg flex justify-between items-center text-body-sm">
@@ -240,6 +300,30 @@
                     @else
                         Tidak Ada
                     @endif
+                </span>
+            </div>
+        </div>
+
+        <!-- Grid 4: Kesiapan Suku Cadang Terpetakan -->
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">4. Suku Cadang Terpetakan</h4>
+                    <span class="material-symbols-outlined {{ $report['sparepart_readiness_ready'] ? 'text-green-500' : 'text-orange-500' }}" style="font-variation-settings: 'FILL' 1;">
+                        {{ $report['sparepart_readiness_ready'] ? 'check_circle' : 'warning' }}
+                    </span>
+                </div>
+                <h5 class="text-headline-sm font-headline-sm mb-2">
+                    {{ $report['sparepart_readiness_ready'] ? 'Suku Cadang Siap' : 'Perlu Perhatian' }}
+                </h5>
+                <p class="text-body-sm text-on-surface-variant mb-4">
+                    Audit ketersediaan stok suku cadang mesin yang telah terpetakan di database.
+                </p>
+            </div>
+            <div class="p-3 bg-surface-container rounded-lg flex justify-between items-center text-body-sm">
+                <span>Kesiapan Stok:</span>
+                <span class="font-bold {{ $report['sparepart_readiness_ready'] ? 'text-green-600' : 'text-orange-600' }}">
+                    {{ $report['sparepart_readiness_ready'] ? 'Terpenuhi (Siap)' : 'Ada Kurang / Reorder' }}
                 </span>
             </div>
         </div>
@@ -327,6 +411,57 @@
     </div>
     @endif
 
+    <!-- Section: Mapped Spareparts Audit (Sparepart Readiness Panel) -->
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-8">
+        <div class="flex justify-between items-center border-b border-outline-variant pb-4 mb-4">
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">4. Audit Stok Suku Cadang Terpetakan (WMS)</h3>
+                <p class="text-body-sm text-on-surface-variant mt-1">Ketersediaan realtime dari Warehouse Management System (WMS) berdasarkan daftar suku cadang mesin ini.</p>
+            </div>
+            <span class="px-3 py-1 rounded text-xs font-bold {{ $report['sparepart_readiness_ready'] ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800' }}">
+                {{ $report['sparepart_readiness_ready'] ? 'Semua Stok Siap' : 'Perlu Perhatian' }}
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-body-sm">
+                <thead>
+                    <tr class="border-b border-outline-variant text-on-surface-variant font-bold">
+                        <th class="pb-3 pr-4">Kode ERP</th>
+                        <th class="pb-3 px-4">Nama Suku Cadang</th>
+                        <th class="pb-3 px-4 text-center">Dibutuhkan</th>
+                        <th class="pb-3 px-4 text-center">Stok WMS</th>
+                        <th class="pb-3 pl-4 text-right">Status Stok</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-variant/30">
+                    @forelse($report['mapped_spareparts'] as $part)
+                        <tr class="hover:bg-surface-container-low transition-colors">
+                            <td class="py-3.5 pr-4 font-mono font-bold text-primary">{{ $part['code'] }}</td>
+                            <td class="py-3.5 px-4 font-medium text-on-surface">{{ $part['name'] }}</td>
+                            <td class="py-3.5 px-4 text-center font-semibold">{{ $part['required'] }}</td>
+                            <td class="py-3.5 px-4 text-center font-bold {{ $part['available'] >= $part['required'] ? 'text-on-surface' : 'text-error' }}">
+                                {{ $part['available'] }}
+                            </td>
+                            <td class="py-3.5 pl-4 text-right">
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 {{ $part['badge_class'] }}">
+                                    <span>{{ $part['icon'] }}</span>
+                                    <span>{{ $part['status'] }}</span>
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-on-surface-variant italic">
+                                Tidak ada suku cadang terpetakan untuk mesin ini.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Notes & Action Footer -->
     @if($plan->notes)
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-8">
@@ -345,6 +480,63 @@
                 Laporan Eksekusi Perbaikan Lapangan
             </h3>
             
+            @php
+                $isPlanDelayed = $plan->actual_completion && $plan->target_completion && $plan->actual_completion->gt($plan->target_completion);
+                $reasonLabels = [
+                    'waiting_sparepart' => 'Waiting Sparepart (Menunggu Suku Cadang)',
+                    'waiting_production' => 'Waiting Production (Menunggu Produksi)',
+                    'waiting_vendor' => 'Waiting Vendor (Menunggu Vendor)',
+                    'waiting_approval' => 'Waiting Approval (Menunggu Persetujuan)',
+                    'additional_damage' => 'Additional Damage Found (Kerusakan Tambahan)',
+                    'manpower_shortage' => 'Manpower Shortage (Kekurangan Personel)',
+                    'power_failure' => 'Power Failure (Mati Listrik/Daya)',
+                    'other' => 'Other (Lainnya)',
+                ];
+                $displayReason = $reasonLabels[$plan->delay_reason] ?? $plan->delay_reason;
+            @endphp
+
+            @if($isPlanDelayed)
+                <div class="bg-rose-50 border border-rose-200 rounded-xl p-5 mb-6 text-body-sm text-slate-800">
+                    <h4 class="font-headline-sm text-headline-sm font-bold text-rose-800 mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[24px]">warning</span>
+                        Analisis Keterlambatan Perawatan (Delay Analysis)
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-semibold text-slate-600 mb-4">
+                        <div>
+                            <span class="block text-[10px] uppercase font-bold text-slate-400">Target Selesai</span>
+                            <span class="font-bold text-slate-800">{{ $plan->target_completion->format('d M Y H:i') }}</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] uppercase font-bold text-slate-400">Realisasi Selesai</span>
+                            <span class="font-bold text-slate-800">{{ $plan->actual_completion->format('d M Y H:i') }}</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] uppercase font-bold text-slate-400">Durasi Keterlambatan</span>
+                            <span class="font-bold text-rose-600">
+                                @php
+                                    $diff = $plan->actual_completion->diff($plan->target_completion);
+                                    $parts = [];
+                                    if ($diff->d > 0) $parts[] = $diff->d . ' Hari';
+                                    if ($diff->h > 0) $parts[] = $diff->h . ' Jam';
+                                    if ($diff->i > 0) $parts[] = $diff->i . ' Menit';
+                                    echo implode(' ', $parts) ?: 'Kurang dari 1 Menit';
+                                @endphp
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] uppercase font-bold text-slate-400">Alasan Utama</span>
+                            <span class="font-bold text-slate-800 uppercase">{{ $displayReason }}</span>
+                        </div>
+                    </div>
+                    @if($plan->delay_notes)
+                        <div class="bg-white p-3 rounded-lg border border-rose-100 text-xs">
+                            <strong class="block mb-1 text-[10px] uppercase font-bold text-slate-400">Catatan Detail:</strong>
+                            <p class="italic text-slate-700">"{{ $plan->delay_notes }}"</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             @if($plan->isCorrective())
                 <!-- Corrective Maintenance Results -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

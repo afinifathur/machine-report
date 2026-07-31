@@ -96,10 +96,16 @@
                     <span class="material-symbols-outlined text-[14px]">engineering</span>
                     {{ $plan->assigned_technician ?? 'Belum Ditugaskan' }}
                 </span>
-                <span class="flex items-center gap-1 font-semibold text-slate-600">
+                <span class="flex items-center gap-1 font-semibold text-slate-600" title="Jadwal Rencana">
                     <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                     {{ $plan->scheduled_date->format('d M Y') }}
                 </span>
+                @if($plan->target_completion)
+                    <span class="flex items-center gap-1 font-semibold text-primary" title="Target Selesai">
+                        <span class="material-symbols-outlined text-[14px]">event_available</span>
+                        Target: {{ $plan->target_completion->format('d M Y H:i') }}
+                    </span>
+                @endif
             </div>
         </div>
 

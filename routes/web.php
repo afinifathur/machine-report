@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/planning/breakdowns', [MaintenancePlanController::class, 'storeBreakdown'])->name('planning.store-breakdown');
     Route::post('/planning/{plan}/assign', [MaintenancePlanController::class, 'assignTechnician'])->name('planning.assign-technician');
     Route::get('/planning/{plan}', [MaintenancePlanController::class, 'show'])->name('planning.show');
+    Route::put('/planning/{plan}', [MaintenancePlanController::class, 'update'])->name('planning.update');
 
     // Mobile/QR Checklist Execution
     Route::get('/machines/qr/{machineCode}/execute', [MaintenanceExecutionController::class, 'qrEntry'])->name('planning.qr-entry');

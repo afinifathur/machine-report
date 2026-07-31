@@ -28,6 +28,10 @@ class MaintenancePlan extends Model
         'reported_department',
         'completed_at',
         'downtime_duration',
+        'target_completion',
+        'actual_completion',
+        'delay_reason',
+        'delay_notes',
     ];
 
     protected $casts = [
@@ -36,7 +40,26 @@ class MaintenancePlan extends Model
         'reported_at' => 'datetime',
         'completed_at' => 'datetime',
         'downtime_duration' => 'integer',
+        'target_completion' => 'datetime',
+        'actual_completion' => 'datetime',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($plan) {
+            if (empty($plan->target_completion)) {
+                $startDate = $plan->scheduled_date ? \Carbon\Carbon::parse($plan->scheduled_date) : now();
+                $baseStart = $startDate->copy()->setTime(8, 0, 0);
+
+                $duration = 120; // Default fallback for corrective (120 minutes)
+                if ($plan->type && $plan->type->value === 'pm' && $plan->maintenanceTemplate) {
+                    $duration = $plan->maintenanceTemplate->estimated_duration ?? 120;
+                }
+
+                $plan->target_completion = $baseStart->addMinutes($duration);
+            }
+        });
+    }
 
     /**
      * Get the machine scheduled for maintenance.
