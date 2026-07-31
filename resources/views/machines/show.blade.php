@@ -771,7 +771,7 @@
                         </div>
                         <div>
                             <label class="block text-body-sm font-semibold text-on-surface-variant mb-1">Lead Time (Hari) *</label>
-                            <input id="mapping-lead-time" type="number" name="lead_time_days" min="1" value="7" required class="w-full bg-surface-container-low border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:ring-2 focus:ring-primary focus:outline-none">
+                            <input id="mapping-lead-time" type="number" name="lead_time_days" min="1" value="7" readonly class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface-variant focus:outline-none cursor-not-allowed" title="Nilai Lead Time disinkronkan langsung dari Warehouse System">
                         </div>
                     </div>
 
@@ -1271,13 +1271,15 @@
                 const item = e.detail;
                 const itemCode = item.code || item.erpCode || item.erp_code || '';
                 const itemName = item.name || 'Unknown Sparepart';
-                selectSparepart(itemCode, itemName);
+                const leadTime = item.lead_time_days || item.leadTimeDays || 7;
+                selectSparepart(itemCode, itemName, leadTime);
             });
 
-            function selectSparepart(code, name) {
+            function selectSparepart(code, name, leadTime) {
                 
                 // Fill hidden item code
                 itemCodeInput.value = code;
+                leadTimeInput.value = leadTime;
                 
                 // Show selection panel
                 selectedItemName.textContent = name;

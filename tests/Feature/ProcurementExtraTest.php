@@ -92,8 +92,8 @@ class ProcurementExtraTest extends TestCase
     {
         $this->actingAs($this->adminUser);
 
-        // Simulate a case created last month
-        $lastMonth = now()->subMonth();
+        // Simulate a case created last month (prevent month overflow when run on the 31st)
+        $lastMonth = now()->day(1)->subMonth();
         $lastMonthPrefix = $lastMonth->format('Ym');
         
         $pastCase = ProcurementCase::create([

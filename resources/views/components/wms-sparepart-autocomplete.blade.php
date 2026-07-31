@@ -59,7 +59,7 @@
             }
 
             debounceTimer = setTimeout(() => {
-                const searchUrl = `/machine-report/public/index.php/machines/{{ $machineCode }}/spareparts/search`;
+                const searchUrl = `{{ route('machines.spareparts.search', $machineCode) }}`;
                 fetch(`${searchUrl}?q=${encodeURIComponent(query)}`)
                     .then(res => res.json())
                     .then(data => {

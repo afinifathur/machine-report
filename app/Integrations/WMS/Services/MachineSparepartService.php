@@ -65,11 +65,13 @@ class MachineSparepartService
                 mappingId: $required->id,
                 monthlyAverage: $dto->monthlyAverage,
                 sixMonthAverage: $dto->sixMonthAverage,
-                trend: $dto->trend
+                trend: $dto->trend,
+                leadTimeDays: $dto->leadTimeDays
             );
 
-            // Resolve stock status badge & calculations
-            $status = $this->resolveStockStatus($dtoWithMapping, $required->lead_time_days);
+            // Resolve stock status badge & calculations (prioritize WMS lead time, fallback to mapping database field)
+            $leadTime = $dtoWithMapping->leadTimeDays ?? $required->lead_time_days ?? 7;
+            $status = $this->resolveStockStatus($dtoWithMapping, $leadTime);
 
             // Resolve shared machines
             $sharedGroup = $sharedUsageRecords->get($code, collect());
@@ -90,7 +92,7 @@ class MachineSparepartService
                 'shared_machines' => $sharedMachines,
                 'shared_count' => count($sharedMachines),
                 'qty_per_machine' => $required->qty_per_machine,
-                'lead_time_days' => $required->lead_time_days,
+                'lead_time_days' => $leadTime,
                 'maintenance_criticality' => $required->maintenance_criticality,
                 'notes' => $required->notes,
             ];
@@ -190,6 +192,7 @@ class MachineSparepartService
                 'location' => $dto->location,
                 'stock' => $dto->stock,
                 'unit' => $dto->unit,
+                'lead_time_days' => $dto->leadTimeDays,
                 'display_label' => "{$dto->erpCode} - {$dto->name} (" . ($dto->brand !== '-' ? $dto->brand : 'No Brand') . ")",
             ];
         }, $dtos);

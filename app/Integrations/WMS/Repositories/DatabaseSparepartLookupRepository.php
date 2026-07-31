@@ -53,6 +53,7 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                     'i.name as item_name',
                     'iv.brand',
                     'iv.unit',
+                    'iv.lead_time_days',
                 ])
                 ->get();
 
@@ -143,7 +144,8 @@ class DatabaseSparepartLookupRepository implements SparepartLookupRepositoryInte
                     mappingId: null,
                     monthlyAverage: $monthlyAverage,
                     sixMonthAverage: $sixMonthAverage,
-                    trend: $trend
+                    trend: $trend,
+                    leadTimeDays: isset($variant->lead_time_days) ? (int)$variant->lead_time_days : null
                 );
             }
 

@@ -65,8 +65,8 @@ class SparepartIntegrationController extends Controller
             /** @var SparepartItemDTO $dto */
             $dto = $wmsDetailsMap[$code] ?? SparepartItemDTO::offlineFallback($code, isOffline: true);
 
-            // Compute overall lead time (max of all mapped machines)
-            $maxLeadTime = $machineMappings->max('lead_time_days') ?? 7;
+            // Compute overall lead time (prioritize WMS lead time, fallback to mapping database field)
+            $maxLeadTime = $dto->leadTimeDays ?? $machineMappings->max('lead_time_days') ?? 7;
 
             // Compute overall criticality (A > B > C)
             $criticalityVal = 'C';
@@ -206,8 +206,8 @@ class SparepartIntegrationController extends Controller
         // Fetch WMS detail
         $dto = $this->sparepartRepo->getItemDetails($code);
 
-        // Calculate metrics
-        $maxLeadTime = $mappings->max('lead_time_days') ?? 7;
+        // Calculate metrics (prioritize WMS lead time, fallback to mapping database field)
+        $maxLeadTime = $dto->leadTimeDays ?? $mappings->max('lead_time_days') ?? 7;
         
         $criticalityVal = 'C';
         $criticalities = $mappings->pluck('maintenance_criticality')->toArray();

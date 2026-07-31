@@ -27,10 +27,9 @@ class MachineSparepartController extends Controller
         foreach ($results as &$item) {
             $code = $item['code'];
             if (isset($mappings[$code])) {
-                $item['lead_time_days'] = $mappings[$code]->lead_time_days;
+                // Keep the lead_time_days value from WMS instead of overriding it
                 $item['maintenance_criticality'] = $mappings[$code]->maintenance_criticality;
             } else {
-                $item['lead_time_days'] = null;
                 $item['maintenance_criticality'] = null;
             }
         }
@@ -74,12 +73,12 @@ class MachineSparepartController extends Controller
             ], 422);
         }
 
-        // Store relationship and mapping parameters
+        // Store relationship and mapping parameters (Lead Time comes from WMS)
         $mapping = MachineRequiredSparepart::create([
             'machine_id' => $machine->id,
             'warehouse_item_code' => $itemCode,
             'qty_per_machine' => $validated['qty_per_machine'] ?? 1,
-            'lead_time_days' => $validated['lead_time_days'] ?? 7,
+            'lead_time_days' => $itemDto->leadTimeDays ?? $validated['lead_time_days'] ?? 7,
             'maintenance_criticality' => $validated['maintenance_criticality'] ?? 'C',
             'notes' => $validated['notes'] ?? null,
         ]);
@@ -104,10 +103,14 @@ class MachineSparepartController extends Controller
     {
         $validated = $request->validate([
             'qty_per_machine' => 'required|integer|min:1',
-            'lead_time_days' => 'required|integer|min:1',
+            'lead_time_days' => 'nullable|integer|min:1',
             'maintenance_criticality' => 'required|string|in:A,B,C',
             'notes' => 'nullable|string',
         ]);
+
+        // Sync lead time from WMS
+        $itemDto = $this->sparepartLookupRepository->getItemDetails($mapping->warehouse_item_code);
+        $validated['lead_time_days'] = $itemDto->leadTimeDays ?? $mapping->lead_time_days ?? 7;
 
         $mapping->update($validated);
 

@@ -21,6 +21,7 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'six_month_average' => 10.0,
             'trend' => 'Increasing',
             'category' => 'Bearing',
+            'lead_time_days' => 14,
         ],
         'SEAL-TC-40' => [
             'variant_id' => 2,
@@ -96,6 +97,7 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
             'six_month_average' => 15.0,
             'trend' => 'Decreasing',
             'category' => 'Belt',
+            'lead_time_days' => 10,
         ],
         'RLY-24V' => [
             'variant_id' => 7,
@@ -157,7 +159,8 @@ class MockSparepartLookupRepository implements SparepartLookupRepositoryInterfac
                     mappingId: null,
                     monthlyAverage: $item['monthly_average'] ?? null,
                     sixMonthAverage: $item['six_month_average'] ?? null,
-                    trend: $item['trend'] ?? null
+                    trend: $item['trend'] ?? null,
+                    leadTimeDays: $item['lead_time_days'] ?? 10
                 );
             } else {
                 $result[$normalized] = SparepartItemDTO::offlineFallback($normalized, isOffline: false);

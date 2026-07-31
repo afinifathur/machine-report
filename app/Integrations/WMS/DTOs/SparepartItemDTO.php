@@ -21,7 +21,8 @@ class SparepartItemDTO
         public readonly ?int $mappingId = null,
         public readonly ?float $monthlyAverage = null,
         public readonly ?float $sixMonthAverage = null,
-        public readonly ?string $trend = null
+        public readonly ?string $trend = null,
+        public readonly ?int $leadTimeDays = null
     ) {}
 
     /**
@@ -42,7 +43,8 @@ class SparepartItemDTO
         ?int $mappingId = null,
         ?float $monthlyAverage = null,
         ?float $sixMonthAverage = null,
-        ?string $trend = null
+        ?string $trend = null,
+        ?int $leadTimeDays = null
     ): self {
         return new self(
             erpCode: $erpCode,
@@ -61,14 +63,15 @@ class SparepartItemDTO
             mappingId: $mappingId,
             monthlyAverage: $monthlyAverage,
             sixMonthAverage: $sixMonthAverage,
-            trend: $trend
+            trend: $trend,
+            leadTimeDays: $leadTimeDays
         );
     }
 
     /**
      * Fallback DTO when WMS system is unreachable or item not found.
      */
-    public static function offlineFallback(string $erpCode, bool $isOffline = true, ?int $mappingId = null): self
+    public static function offlineFallback(string $erpCode, bool $isOffline = true, ?int $mappingId = null, ?int $leadTimeDays = null): self
     {
         return new self(
             erpCode: $erpCode,
@@ -87,7 +90,8 @@ class SparepartItemDTO
             mappingId: $mappingId,
             monthlyAverage: null,
             sixMonthAverage: null,
-            trend: null
+            trend: null,
+            leadTimeDays: $leadTimeDays
         );
     }
 
@@ -116,6 +120,7 @@ class SparepartItemDTO
             'monthly_average' => $this->monthlyAverage,
             'six_month_average' => $this->sixMonthAverage,
             'trend' => $this->trend,
+            'lead_time_days' => $this->leadTimeDays,
         ];
     }
 }
