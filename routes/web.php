@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/planning/{plan}/execute', [MaintenanceExecutionController::class, 'create'])->name('planning.execute');
     Route::post('/planning/{plan}/execute', [MaintenanceExecutionController::class, 'store'])->name('planning.store-execute');
     Route::get('/planning/{plan}/print', [MaintenanceExecutionController::class, 'print'])->name('planning.print');
+    Route::get('/planning/{plan}/report', [MaintenanceExecutionController::class, 'report'])->name('planning.report');
 
     // Reports
     Route::get('/reports', function () {

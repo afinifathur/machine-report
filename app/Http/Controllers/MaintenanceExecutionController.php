@@ -367,13 +367,26 @@ class MaintenanceExecutionController extends Controller
     /**
      * Render printable Work Order briefing sheet (PDF).
      */
-    public function print(MaintenancePlan $plan, \App\Services\WorkOrderPdfService $pdfService)
+    public function print(MaintenancePlan $plan, \App\Services\MaintenancePdfService $pdfService)
     {
-        $pdfContent = $pdfService->generatePdf($plan);
+        $pdfContent = $pdfService->generateWorkOrder($plan);
 
         return response($pdfContent, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="work_order_' . $plan->id . '.pdf"',
+        ]);
+    }
+
+    /**
+     * Render printable Maintenance Completion Report sheet (PDF).
+     */
+    public function report(MaintenancePlan $plan, \App\Services\MaintenancePdfService $pdfService)
+    {
+        $pdfContent = $pdfService->generateCompletionReport($plan);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="completion_report_' . $plan->id . '.pdf"',
         ]);
     }
 }

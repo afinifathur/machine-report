@@ -281,4 +281,122 @@ class PlanningDelayAndReadinessTest extends TestCase
         $response->assertHeader('Content-Type', 'application/pdf');
         $this->assertNotEmpty($response->getContent());
     }
+
+    /**
+     * Verify Completion Report PDF generation endpoint response.
+     */
+    public function test_completion_report_pdf_generation_endpoint(): void
+    {
+        $user = \App\Models\User::factory()->create();
+        $this->actingAs($user);
+
+        // Make sure execution exists to represent a completion report
+        $execution = \App\Models\MaintenanceExecution::create([
+            'maintenance_plan_id' => $this->planPm->id,
+            'machine_id' => $this->machine->id,
+            'operator_name' => 'Operator A',
+            'started_at' => now()->subHour(),
+            'completed_at' => now(),
+            'overall_score' => 4.5,
+            'notes' => 'Corrective actions done.',
+            'status' => 'completed',
+        ]);
+
+        $this->planPm->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'actual_completion' => now(),
+        ]);
+
+        $response = $this->get(route('planning.report', $this->planPm->id));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
+
+    /**
+     * Verify Completion Report PDF resilience scenarios.
+     */
+    public function test_completion_report_pdf_resilience_scenarios(): void
+    {
+        $user = \App\Models\User::factory()->create();
+        $this->actingAs($user);
+
+        // Scenario: Multiple spareparts consumed, before & after photos present, delayed completion, unknown status
+        $execution = \App\Models\MaintenanceExecution::create([
+            'maintenance_plan_id' => $this->planCm->id,
+            'machine_id' => $this->machine->id,
+            'operator_name' => 'Operator B',
+            'started_at' => now()->subHours(3),
+            'completed_at' => now(),
+            'overall_score' => 3.8,
+            'notes' => 'Replaced spindle belts.',
+            'status' => 'completed',
+        ]);
+
+        // Add consumed spareparts
+        \App\Models\MaintenanceExecutionSparepart::create([
+            'execution_id' => $execution->id,
+            'warehouse_item_code' => 'SP-001',
+            'quantity' => 2,
+        ]);
+        \App\Models\MaintenanceExecutionSparepart::create([
+            'execution_id' => $execution->id,
+            'warehouse_item_code' => 'SP-002',
+            'quantity' => 1,
+        ]);
+
+        // Add mock photo records
+        \App\Models\MaintenanceExecutionPhoto::create([
+            'execution_id' => $execution->id,
+            'type' => 'before',
+            'photo_path' => 'photos/before_test.jpg',
+        ]);
+        \App\Models\MaintenanceExecutionPhoto::create([
+            'execution_id' => $execution->id,
+            'type' => 'after',
+            'photo_path' => 'photos/after_test.jpg',
+        ]);
+
+        // Set delayed plan parameters
+        $this->planCm->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'actual_completion' => now(),
+            'target_completion' => now()->subHours(2), // 2 hours late
+            'delay_reason' => 'waiting_sparepart',
+            'delay_notes' => 'WMS delivery delay',
+        ]);
+
+        // Mock WMS Repository lookup
+        $this->mock(\App\Integrations\WMS\Repositories\SparepartLookupRepositoryInterface::class, function ($mock) {
+            $mock->shouldReceive('getItemsDetails')
+                ->andReturn([
+                    'SP-001' => new \App\Integrations\WMS\DTOs\SparepartItemDTO(
+                        erpCode: 'SP-001',
+                        variantId: 101,
+                        name: 'Spindle Belt Type A',
+                        brand: 'Gates',
+                        unit: 'pcs',
+                        barcode: 'Gates-001',
+                        location: 'A-2',
+                        supplier: 'Gates Indo',
+                        stock: 5,
+                        weeklyAverage: 0.5,
+                        category: 'Power Transmission',
+                        isAvailable: true,
+                        isOffline: false,
+                        mappingId: 101
+                    ),
+                    // SP-002 will be missing/null in the returned map to verify robustness
+                ]);
+        });
+
+        $response = $this->get(route('planning.report', $this->planCm->id));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($response->getContent());
+    }
 }
