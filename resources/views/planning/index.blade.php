@@ -375,23 +375,26 @@
                         <div class="flex-1 flex flex-col justify-end gap-1 overflow-hidden mt-1">
                             @foreach($dayPlans as $p)
                                 @php
-                                    $rdClass = match($p->readiness['overall_status']) {
-                                        'Completed' => 'bg-green-600 hover:bg-green-700',
-                                        'Waiting Review' => 'bg-blue-500 hover:bg-blue-600',
-                                        'Ready' => 'bg-green-500 hover:bg-green-600',
-                                        'Almost Ready' => 'bg-orange-500 hover:bg-orange-600',
-                                        'Blocked' => 'bg-error hover:bg-error/95',
-                                        'Reported' => 'bg-rose-600 hover:bg-rose-700',
-                                        'Assigned' => 'bg-amber-500 hover:bg-amber-600',
+                                    $bgColor = $p->isCorrective() ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700';
+                                    $rdDotColor = match($p->readiness['overall_status']) {
+                                        'Completed' => 'bg-green-400',
+                                        'Waiting Review' => 'bg-indigo-300',
+                                        'Ready' => 'bg-green-500',
+                                        'Almost Ready' => 'bg-amber-400',
+                                        'Blocked' => 'bg-red-300',
+                                        'Reported' => 'bg-slate-350',
+                                        'Assigned' => 'bg-yellow-300',
+                                        default => 'bg-white',
                                     };
+                                    $typeBadge = $p->isCorrective() ? 'CM' : 'PM';
                                 @endphp
                                 <a 
                                     href="{{ route('planning.show', $p->id) }}" 
-                                    class="text-[10px] text-white font-semibold truncate rounded px-1.5 py-0.5 flex items-center justify-between gap-1 shadow-sm transition-all hover:scale-[1.02] {{ $rdClass }}"
+                                    class="text-[9px] text-white font-semibold truncate rounded px-1.5 py-0.5 flex items-center justify-between gap-1 shadow-sm transition-all hover:scale-[1.02] {{ $bgColor }}"
                                     title="{{ $p->machine->code }} - {{ $p->isCorrective() ? $p->breakdown_number : $p->maintenanceTemplate->name }} ({{ $p->readiness['overall_status'] }})"
                                 >
-                                    <span>{{ $p->machine->code }}</span>
-                                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                    <span class="truncate">[{{ $typeBadge }}] {{ $p->machine->code }}</span>
+                                    <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $rdDotColor }}" title="Kesiapan: {{ $p->readiness['overall_status'] }}"></span>
                                 </a>
                             @endforeach
                         </div>
@@ -410,12 +413,19 @@
         </div>
 
         <!-- Legend Card -->
-        <div class="mt-4 p-4 border border-outline-variant rounded-xl bg-surface-container-lowest shadow-sm flex flex-wrap gap-6 text-label-sm font-semibold text-on-surface-variant">
-            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-green-600"></span> Selesai</span>
-            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-blue-500"></span> Menunggu Review</span>
-            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-green-500"></span> Siap Eksekusi</span>
-            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-orange-500"></span> Hampir Siap</span>
-            <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-error"></span> Terblokir (Masalah Ketersediaan / Mesin Rusak)</span>
+        <div class="mt-4 p-4 border border-outline-variant rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-3 text-label-sm font-semibold text-on-surface-variant">
+            <div class="flex flex-wrap gap-6 items-center border-b border-outline-variant pb-2">
+                <span class="text-xs uppercase text-slate-400 font-bold block w-full mb-1">Tipe Pekerjaan (Warna Kalender)</span>
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-red-600"></span> Corrective (CM)</span>
+                <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-blue-600"></span> Preventive (PM)</span>
+            </div>
+            <div class="flex flex-wrap gap-6 items-center">
+                <span class="text-xs uppercase text-slate-400 font-bold block w-full mb-1">Status Kesiapan & Eksekusi (Bulatan Status)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Selesai / Siap Eksekusi</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-300"></span> Menunggu Review</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Hampir Siap / Ditugaskan</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-300"></span> Terblokir (Hambatan / Mesin Down)</span>
+            </div>
         </div>
     </div>
 

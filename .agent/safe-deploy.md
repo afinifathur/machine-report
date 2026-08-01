@@ -48,7 +48,7 @@ sudo docker compose exec warehouse-db mysqldump -u warehouse_system_user -p[PASS
 ### STEP 3: Pull & Update di Server
 
 ```bash
-cd /srv/docker/apps/Warehouse-System-SP
+cd /srv/docker/apps/Machine-Report
 
 # Pastikan repository bersih sebelum pull
 sudo git status

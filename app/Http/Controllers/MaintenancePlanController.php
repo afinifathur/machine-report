@@ -144,15 +144,7 @@ class MaintenancePlanController extends Controller
         ));
     }
 
-    /**
-     * Show report breakdown form.
-     */
-    public function reportBreakdown()
-    {
-        $machines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('code')->get();
-        $departments = \App\Models\MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
-        return view('breakdowns.create', compact('machines', 'departments'));
-    }
+
 
     /**
      * Store reported breakdown and update machine status.
@@ -199,7 +191,7 @@ class MaintenancePlanController extends Controller
     }
 
     /**
-     * Assign a technician to the breakdown ticket.
+     * Assign a technician to the maintenance plan.
      */
     public function assignTechnician(Request $request, MaintenancePlan $plan)
     {
@@ -207,12 +199,12 @@ class MaintenancePlanController extends Controller
             'assigned_technician' => 'required|string|max:255',
         ]);
 
-        if ($plan->type !== MaintenancePlanType::CORRECTIVE) {
-            return redirect()->back()->with('error', 'Rencana bukan bertipe corrective.');
+        if (!in_array($plan->type, [MaintenancePlanType::CORRECTIVE, MaintenancePlanType::PM])) {
+            return redirect()->back()->with('error', 'Tipe rencana tidak valid.');
         }
 
-        if ($plan->status !== 'reported') {
-            return redirect()->back()->with('error', 'Status rencana harus reported untuk menunjuk teknisi.');
+        if (in_array($plan->status, ['completed', 'cancelled'])) {
+            return redirect()->back()->with('error', 'Rencana perawatan sudah selesai atau dibatalkan.');
         }
 
         $plan->update([
@@ -277,6 +269,145 @@ class MaintenancePlanController extends Controller
 
         return redirect()->route('planning.show', $plan->id)
             ->with('success', 'Rencana perawatan berhasil diperbarui.');
+    }
+
+    /**
+     * Show report breakdown form (Redirects to unified create form).
+     */
+    public function reportBreakdown(Request $request)
+    {
+        $request->merge(['type' => 'corrective']);
+        return $this->create($request);
+    }
+
+    /**
+     * Display the preventive maintenance dashboard and monitoring board.
+     */
+    public function preventiveIndex(Request $request)
+    {
+        $todayPmCount = MaintenancePlan::preventive()
+            ->whereDate('scheduled_date', now()->toDateString())
+            ->count();
+
+        $overduePmCount = MaintenancePlan::preventive()
+            ->whereDate('scheduled_date', '<', now()->toDateString())
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->count();
+
+        $startOfWeek = now()->startOfWeek();
+        $endOfWeek = now()->endOfWeek();
+        $dueThisWeekCount = MaintenancePlan::preventive()
+            ->whereBetween('scheduled_date', [$startOfWeek, $endOfWeek])
+            ->count();
+
+        $completedTodayCount = MaintenancePlan::preventive()
+            ->where('status', 'completed')
+            ->whereDate('completed_at', now()->toDateString())
+            ->count();
+
+        $query = MaintenancePlan::preventive()->with('machine');
+
+        // Apply filters
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('notes', 'like', "%{$search}%")
+                  ->orWhere('assigned_technician', 'like', "%{$search}%")
+                  ->orWhereHas('machine', function($mq) use ($search) {
+                      $mq->where('code', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->input('priority'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('machine_id')) {
+            $query->where('machine_id', $request->input('machine_id'));
+        }
+
+        if ($request->filled('technician')) {
+            $query->where('assigned_technician', 'like', "%{$request->input('technician')}%");
+        }
+
+        $plans = $query->orderBy('scheduled_date', 'asc')->paginate(15);
+
+        $machines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('code')->get();
+        
+        $operators = \App\Models\Employee::where('employment_status', \App\Enums\EmploymentStatus::ACTIVE)
+            ->where('is_assignable', true)
+            ->pluck('full_name')
+            ->toArray();
+
+        return view('planning.preventive_index', compact(
+            'todayPmCount',
+            'overduePmCount',
+            'dueThisWeekCount',
+            'completedTodayCount',
+            'plans',
+            'machines',
+            'operators'
+        ));
+    }
+
+    /**
+     * Show the unified maintenance plan creation form.
+     */
+    public function create(Request $request)
+    {
+        $type = $request->input('type', 'preventive');
+        $machines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('code')->get();
+        $departments = \App\Models\MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
+        $templates = \App\Models\MaintenanceTemplate::where('is_active', true)->orderBy('name')->get();
+        $operators = \App\Models\Employee::where('employment_status', \App\Enums\EmploymentStatus::ACTIVE)
+            ->where('is_assignable', true)
+            ->pluck('full_name')
+            ->toArray();
+
+        return view('planning.form', compact('machines', 'departments', 'templates', 'operators', 'type'));
+    }
+
+    /**
+     * Store the newly created maintenance plan (unified).
+     */
+    public function store(Request $request)
+    {
+        $type = $request->input('type', 'preventive');
+        if ($type === 'corrective') {
+            return $this->storeBreakdown($request);
+        }
+
+        $validated = $request->validate([
+            'machine_id' => 'required|exists:machines,id',
+            'maintenance_template_id' => 'required|exists:maintenance_templates,id',
+            'scheduled_date' => 'required|date',
+            'priority' => 'required|string|in:low,medium,high,critical',
+            'notes' => 'nullable|string',
+            'assigned_technician' => 'nullable|string|max:255',
+        ]);
+
+        $status = !empty($validated['assigned_technician']) ? 'assigned' : 'draft';
+
+        $plan = MaintenancePlan::create([
+            'machine_id' => $validated['machine_id'],
+            'maintenance_template_id' => $validated['maintenance_template_id'],
+            'scheduled_date' => Carbon::parse($validated['scheduled_date']),
+            'priority' => $validated['priority'],
+            'notes' => $validated['notes'],
+            'assigned_technician' => $validated['assigned_technician'] ?? null,
+            'status' => $status,
+            'type' => MaintenancePlanType::PM,
+            'generation_source' => 'Manual',
+        ]);
+
+        return redirect()->route('preventive.index')
+            ->with('success', 'Rencana PM berhasil dibuat.');
     }
 }
 

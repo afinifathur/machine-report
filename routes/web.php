@@ -65,10 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/machines/{machine}/spareparts/{mapping}', [MachineSparepartController::class, 'update'])->name('machines.spareparts.update');
     Route::delete('/machines/{machine}/spareparts/{mapping}', [MachineSparepartController::class, 'destroy'])->name('machines.spareparts.destroy');
 
-    // Maintenance Management
-    Route::get('/maintenances', function () {
-        return view('maintenances.index');
-    })->name('maintenances.index');
+
 
     // Breakdowns & Downtime
     Route::get('/breakdowns', [BreakdownController::class, 'index'])->name('breakdowns.index');
@@ -80,11 +77,17 @@ Route::middleware('auth')->group(function () {
 
     // Planning
     Route::get('/planning', [MaintenancePlanController::class, 'index'])->name('planning.index');
+    Route::get('/planning/create', [MaintenancePlanController::class, 'create'])->name('planning.create');
+    Route::post('/planning', [MaintenancePlanController::class, 'store'])->name('planning.store');
     Route::get('/planning/breakdown/report', [MaintenancePlanController::class, 'reportBreakdown'])->name('planning.report-breakdown');
     Route::post('/planning/breakdowns', [MaintenancePlanController::class, 'storeBreakdown'])->name('planning.store-breakdown');
     Route::post('/planning/{plan}/assign', [MaintenancePlanController::class, 'assignTechnician'])->name('planning.assign-technician');
     Route::get('/planning/{plan}', [MaintenancePlanController::class, 'show'])->name('planning.show');
     Route::put('/planning/{plan}', [MaintenancePlanController::class, 'update'])->name('planning.update');
+
+    // Preventive Maintenance Workspace
+    Route::get('/preventive-maintenance', [MaintenancePlanController::class, 'preventiveIndex'])->name('preventive.index');
+    Route::get('/preventive-maintenance/create', [MaintenancePlanController::class, 'create'])->name('preventive.create');
 
     // Mobile/QR Checklist Execution
     Route::get('/machines/qr/{machineCode}/execute', [MaintenanceExecutionController::class, 'qrEntry'])->name('planning.qr-entry');

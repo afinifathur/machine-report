@@ -19,18 +19,20 @@
             <span class="font-body-md text-body-md {{ request()->routeIs('machines.*') ? 'font-semibold' : '' }}">Daftar Mesin</span>
         </a>
 
-        <!-- Maintenance -->
-        <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('maintenances.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
-           href="{{ route('maintenances.index') }}">
-            <span class="material-symbols-outlined" data-icon="build">build</span>
-            <span class="font-body-md text-body-md {{ request()->routeIs('maintenances.*') ? 'font-semibold' : '' }}">Pelaksanaan Perawatan</span>
-        </a>
+
 
         <!-- Breakdown & Downtime -->
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('breakdowns.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('breakdowns.index') }}">
             <span class="material-symbols-outlined" data-icon="emergency_home">emergency_home</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('breakdowns.*') ? 'font-semibold' : '' }}">Kerusakan & Downtime</span>
+        </a>
+
+        <!-- Preventive Maintenance -->
+        <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('preventive.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
+           href="{{ route('preventive.index') }}">
+            <span class="material-symbols-outlined" data-icon="event_repeat">event_repeat</span>
+            <span class="font-body-md text-body-md {{ request()->routeIs('preventive.*') ? 'font-semibold' : '' }}">Preventive Maintenance</span>
         </a>
 
         <!-- Sparepart Integration -->

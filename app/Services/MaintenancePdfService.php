@@ -202,10 +202,7 @@ class MaintenancePdfService
      */
     protected function buildDocumentContext(MaintenancePlan $plan, string $docType): array
     {
-        $dateStr = $plan->scheduled_date ? $plan->scheduled_date->format('Ymd') : now()->format('Ymd');
-        $typeStr = $plan->isPreventive() ? 'PM' : 'CM';
-        $seqStr = str_pad($plan->id, 5, '0', STR_PAD_LEFT);
-        $docNumber = "MR-{$typeStr}-{$dateStr}-{$seqStr}";
+        $docNumber = $plan->work_order_number;
 
         $qrCodeImage = $this->generateMachinePassportQr($plan);
 
