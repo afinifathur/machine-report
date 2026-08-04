@@ -6,69 +6,85 @@
     
     <div class="flex-1 space-y-1">
         <!-- Dashboard -->
+        @can('dashboard.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('dashboard') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('dashboard') }}">
             <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('dashboard') ? 'font-semibold' : '' }}">Dashboard</span>
         </a>
+        @endcan
 
         <!-- Machine Registry -->
+        @can('machine.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('machines.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('machines.index') }}">
             <span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('machines.*') ? 'font-semibold' : '' }}">Daftar Mesin</span>
         </a>
-
-
+        @endcan
 
         <!-- Breakdown & Downtime -->
+        @can('breakdown.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('breakdowns.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('breakdowns.index') }}">
             <span class="material-symbols-outlined" data-icon="emergency_home">emergency_home</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('breakdowns.*') ? 'font-semibold' : '' }}">Kerusakan & Downtime</span>
         </a>
+        @endcan
 
         <!-- Preventive Maintenance -->
+        @can('preventive.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('preventive.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('preventive.index') }}">
             <span class="material-symbols-outlined" data-icon="event_repeat">event_repeat</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('preventive.*') ? 'font-semibold' : '' }}">Preventive Maintenance</span>
         </a>
+        @endcan
 
         <!-- Sparepart Integration -->
+        @can('sparepart.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('spareparts.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('spareparts.index') }}">
             <span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('spareparts.*') ? 'font-semibold' : '' }}">Integrasi Sparepart</span>
         </a>
+        @endcan
 
         <!-- Special Procurement -->
+        @can('procurement.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('procurements.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('procurements.index') }}">
             <span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('procurements.*') ? 'font-semibold' : '' }}">Pengadaan Khusus</span>
         </a>
+        @endcan
 
         <!-- Planning -->
+        @can('planning.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('planning.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('planning.index') }}">
             <span class="material-symbols-outlined" data-icon="event_note">event_note</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('planning.*') ? 'font-semibold' : '' }}">Perencanaan</span>
         </a>
+        @endcan
 
         <!-- Reports -->
+        @can('report.view')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('reports.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('reports.index') }}">
             <span class="material-symbols-outlined" data-icon="description">description</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('reports.*') ? 'font-semibold' : '' }}">Laporan</span>
         </a>
+        @endcan
 
         <!-- Administration -->
+        @can('admin.manage.users')
         <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('admin.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
            href="{{ route('admin.index') }}">
             <span class="material-symbols-outlined" data-icon="settings">settings</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('admin.*') ? 'font-semibold' : '' }}">Administrasi</span>
         </a>
+        @endcan
     </div>
 
     <!-- User Profile Widget -->

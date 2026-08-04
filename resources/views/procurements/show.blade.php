@@ -140,50 +140,13 @@
                 @if($procurement->attachments->isEmpty())
                     <p class="text-xs text-on-surface-variant italic">Belum ada lampiran.</p>
                 @else
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        @foreach($procurement->attachments as $attachment)
-                            <div class="p-3 bg-surface-container rounded-xl border border-outline-variant flex items-start justify-between gap-2 shadow-xs text-sm">
-                                <div class="flex items-start gap-2.5 min-w-0">
-                                    <span class="material-symbols-outlined text-primary mt-0.5 shrink-0">
-                                        {{ str_starts_with($attachment->mime_type, 'image/') ? 'image' : 'description' }}
-                                    </span>
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-on-surface truncate text-xs" title="{{ $attachment->original_filename }}">
-                                            {{ $attachment->original_filename }}
-                                        </p>
-                                        <p class="text-[10px] text-on-surface-variant mt-0.5 font-medium">
-                                            @if($attachment->file_size >= 1048576)
-                                                {{ number_format($attachment->file_size / 1048576, 2) }} MB
-                                            @else
-                                                {{ number_format($attachment->file_size / 1024, 1) }} KB
-                                            @endif
-                                            • Oleh: {{ $attachment->uploader->name ?? 'System' }}
-                                        </p>
-                                        <p class="text-[9px] text-on-surface-variant opacity-75 mt-0.5">
-                                            {{ $attachment->created_at->format('d M Y H:i') }}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex flex-col gap-1 items-end shrink-0">
-                                    <a href="{{ asset('storage/procurements/' . $attachment->stored_filename) }}" target="_blank" class="text-primary hover:underline text-[11px] font-bold">
-                                        Lihat
-                                    </a>
-                                    <a href="{{ route('procurements.attachments.download', $attachment->id) }}" class="text-secondary hover:underline text-[11px] font-bold">
-                                        Unduh
-                                    </a>
-                                    @can('deleteAttachment', $attachment)
-                                        <form action="{{ route('procurements.attachments.destroy', $attachment->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus lampiran ini?')" class="mt-1">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-error hover:underline text-[11px] font-bold">
-                                                Hapus
-                                            </button>
-                                        </form>
-                                    @endcan
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
+                    <x-attachment-gallery 
+                        :attachments="$procurement->attachments" 
+                        downloadRoute="procurements.attachments.download" 
+                        deleteRoute="procurements.attachments.destroy" 
+                        deletePermission="deleteAttachment" 
+                        storagePath="storage/procurements/" 
+                    />
                 @endif
 
                 @can('uploadAttachment', $procurement)

@@ -12,6 +12,7 @@ use App\Services\Maintenance\DowntimeCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Gate;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 use chillerlan\QRCode\Common\EccLevel;
@@ -48,6 +49,8 @@ class MaintenanceExecutionController extends Controller
      */
     public function qrEntry(string $machineCode)
     {
+        abort_unless(auth()->user()->can('planning.execute'), 403);
+
         $machine = Machine::where('code', $machineCode)->first();
         if (!$machine) {
             abort(404, 'Mesin tidak ditemukan.');
@@ -94,6 +97,7 @@ class MaintenanceExecutionController extends Controller
      */
     public function create(MaintenancePlan $plan)
     {
+        Gate::authorize('execute', $plan);
         if ($plan->status === 'completed') {
             return redirect()->route('planning.show', $plan->id)
                 ->with('warning', 'Pemeriksaan perawatan untuk rencana ini sudah diselesaikan.');
@@ -116,6 +120,7 @@ class MaintenanceExecutionController extends Controller
      */
     public function store(Request $request, MaintenancePlan $plan)
     {
+        Gate::authorize('execute', $plan);
         if ($plan->status === 'completed') {
             return redirect()->route('planning.show', $plan->id)
                 ->with('error', 'Rencana perawatan ini sudah selesai.');
@@ -367,8 +372,10 @@ class MaintenanceExecutionController extends Controller
     /**
      * Render printable Work Order briefing sheet (PDF).
      */
-    public function print(MaintenancePlan $plan, \App\Services\MaintenancePdfService $pdfService)
+    public function print(MaintenancePlan $plan, \App\Services\DocumentPdfService $pdfService)
     {
+        Gate::authorize('print', $plan);
+
         $pdfContent = $pdfService->generateWorkOrder($plan);
 
         return response($pdfContent, 200, [
@@ -380,8 +387,10 @@ class MaintenanceExecutionController extends Controller
     /**
      * Render printable Maintenance Completion Report sheet (PDF).
      */
-    public function report(MaintenancePlan $plan, \App\Services\MaintenancePdfService $pdfService)
+    public function report(MaintenancePlan $plan, \App\Services\DocumentPdfService $pdfService)
     {
+        Gate::authorize('verify', $plan);
+
         $pdfContent = $pdfService->generateCompletionReport($plan);
 
         return response($pdfContent, 200, [

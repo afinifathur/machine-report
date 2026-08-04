@@ -6,6 +6,7 @@ use App\Models\Machine;
 use App\Services\MachineQrCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Gate;
 
 class MachineQrCodeController extends Controller
 {
@@ -22,6 +23,7 @@ class MachineQrCodeController extends Controller
     public function generate(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $this->qrCodeService->ensureExists($machine);
 
         return redirect()->route('machines.show', $machine->code)
@@ -34,6 +36,7 @@ class MachineQrCodeController extends Controller
     public function download(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('view', $machine);
         $this->qrCodeService->ensureExists($machine);
 
         $filePath = storage_path('app/public/qr_codes/machine-' . $machine->id . '.png');
@@ -53,6 +56,7 @@ class MachineQrCodeController extends Controller
     public function print(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('view', $machine);
         $this->qrCodeService->ensureExists($machine);
 
         $qrCodeUrl = asset($machine->qr_code_path);

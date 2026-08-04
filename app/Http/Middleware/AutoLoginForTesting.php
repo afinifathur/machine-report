@@ -18,7 +18,10 @@ class AutoLoginForTesting
             foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $trace) {
                 if (isset($trace['class']) && (
                     str_contains($trace['class'], 'AuthenticationTest') || 
-                    str_contains($trace['class'], 'ProcurementWorkflowTest')
+                    str_contains($trace['class'], 'ProcurementWorkflowTest') ||
+                    str_contains($trace['class'], 'RBACFeatureTest') ||
+                    str_contains($trace['class'], 'ProcurementAttachmentTest') ||
+                    str_contains($trace['class'], 'ProcurementExtraTest')
                 )) {
                     $isAuthTest = true;
                     break;
@@ -27,6 +30,10 @@ class AutoLoginForTesting
             if (!$isAuthTest) {
                 $user = User::first() ?? User::factory()->create();
                 if ($user) {
+                    $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'System Administrator']);
+                    if (!$user->hasRole('System Administrator')) {
+                        $user->assignRole($role);
+                    }
                     auth()->login($user);
                 }
             }

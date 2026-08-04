@@ -13,7 +13,7 @@ class ProcurementCasePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole([
+        return $user->hasPermissionTo('procurement.view') || $user->hasAnyRole([
             'Admin Maintenance',
             'Kabag Maintenance',
             'Direktur',
@@ -21,6 +21,11 @@ class ProcurementCasePolicy
             'Admin Sparepart',
             'MR',
             'Auditor',
+            'Maintenance Administrator',
+            'Maintenance Manager',
+            'Director',
+            'Warehouse Administrator',
+            'Management Representative',
         ]);
     }
 
@@ -37,7 +42,9 @@ class ProcurementCasePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create procurement') || $user->hasRole('Admin Maintenance');
+        return $user->hasPermissionTo('procurement.create') 
+            || $user->hasPermissionTo('create procurement') 
+            || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']);
     }
 
     /**
@@ -47,7 +54,7 @@ class ProcurementCasePolicy
     {
         // Hanya Draft yang boleh diedit secara konvensional
         return $procurementCase->status === ProcurementStatus::DRAFT 
-            && ($user->id === $procurementCase->created_by || $user->hasRole('Admin Maintenance'));
+            && ($user->id === $procurementCase->created_by || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']));
     }
 
     /**
@@ -57,7 +64,7 @@ class ProcurementCasePolicy
     {
         // Hanya Draft yang boleh dihapus
         return $procurementCase->status === ProcurementStatus::DRAFT 
-            && ($user->id === $procurementCase->created_by || $user->hasRole('Admin Maintenance'));
+            && ($user->id === $procurementCase->created_by || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']));
     }
 
     /**
@@ -66,7 +73,7 @@ class ProcurementCasePolicy
     public function submit(User $user, ProcurementCase $procurementCase): bool
     {
         return $procurementCase->status === ProcurementStatus::DRAFT 
-            && ($user->id === $procurementCase->created_by || $user->hasRole('Admin Maintenance'));
+            && ($user->id === $procurementCase->created_by || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']));
     }
 
     /**
@@ -74,7 +81,8 @@ class ProcurementCasePolicy
      */
     public function approveStage1(User $user, ProcurementCase $case): bool
     {
-        return $case->status === ProcurementStatus::PENDING_KABAG && $user->hasRole('Kabag Maintenance');
+        return $case->status === ProcurementStatus::PENDING_KABAG 
+            && ($user->hasPermissionTo('procurement.approve.stage1') || $user->hasAnyRole(['Kabag Maintenance', 'Maintenance Manager']));
     }
 
     /**
@@ -82,7 +90,8 @@ class ProcurementCasePolicy
      */
     public function approveStage2(User $user, ProcurementCase $case): bool
     {
-        return $case->status === ProcurementStatus::PENDING_DIR && $user->hasRole('Direktur');
+        return $case->status === ProcurementStatus::PENDING_DIR 
+            && ($user->hasPermissionTo('procurement.approve.stage2') || $user->hasAnyRole(['Direktur', 'Director']));
     }
 
     /**
@@ -91,9 +100,9 @@ class ProcurementCasePolicy
     public function returnForInformation(User $user, ProcurementCase $case): bool
     {
         return match ($case->status) {
-            ProcurementStatus::PENDING_KABAG => $user->hasRole('Kabag Maintenance'),
-            ProcurementStatus::PENDING_DIR => $user->hasRole('Direktur'),
-            ProcurementStatus::PROCESSING => $user->hasRole('Purchasing'),
+            ProcurementStatus::PENDING_KABAG => $user->hasAnyRole(['Kabag Maintenance', 'Maintenance Manager']),
+            ProcurementStatus::PENDING_DIR => $user->hasAnyRole(['Direktur', 'Director']),
+            ProcurementStatus::PROCESSING => $user->hasAnyRole(['Purchasing']),
             default => false,
         };
     }
@@ -104,7 +113,7 @@ class ProcurementCasePolicy
     public function updateInformation(User $user, ProcurementCase $case): bool
     {
         return $case->status === ProcurementStatus::NEED_INFO 
-            && ($user->id === $case->created_by || $user->hasRole('Admin Maintenance'));
+            && ($user->id === $case->created_by || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']));
     }
 
     /**
@@ -112,7 +121,8 @@ class ProcurementCasePolicy
      */
     public function inputPO(User $user, ProcurementCase $case): bool
     {
-        return $case->status === ProcurementStatus::PROCESSING && $user->hasRole('Purchasing');
+        return $case->status === ProcurementStatus::PROCESSING 
+            && ($user->hasPermissionTo('procurement.process') || $user->hasAnyRole(['Purchasing']));
     }
 
     /**
@@ -120,7 +130,8 @@ class ProcurementCasePolicy
      */
     public function confirmArrival(User $user, ProcurementCase $case): bool
     {
-        return $case->status === ProcurementStatus::WAITING_DELIVERY && $user->hasRole('Admin Sparepart');
+        return $case->status === ProcurementStatus::WAITING_DELIVERY 
+            && ($user->hasPermissionTo('procurement.receive') || $user->hasAnyRole(['Admin Sparepart', 'Warehouse Administrator']));
     }
 
     /**
@@ -129,7 +140,9 @@ class ProcurementCasePolicy
     public function confirmPickup(User $user, ProcurementCase $case): bool
     {
         return $case->status === ProcurementStatus::READY_TO_PICKUP 
-            && ($user->id === $case->created_by || $user->hasRole('Admin Maintenance'));
+            && ($user->hasPermissionTo('procurement.pickup') 
+                || $user->id === $case->created_by 
+                || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']));
     }
 
     /**
@@ -144,10 +157,13 @@ class ProcurementCasePolicy
         // Pembatalan disesuaikan dengan current owner status
         return match ($case->status) {
             ProcurementStatus::DRAFT, ProcurementStatus::NEED_INFO, ProcurementStatus::READY_TO_PICKUP => 
-                $user->id === $case->created_by || $user->hasRole('Admin Maintenance'),
-            ProcurementStatus::PENDING_KABAG => $user->hasRole('Kabag Maintenance') || $user->hasRole('Admin Maintenance'),
-            ProcurementStatus::PENDING_DIR => $user->hasRole('Direktur') || $user->hasRole('Kabag Maintenance'),
-            ProcurementStatus::PROCESSING, ProcurementStatus::WAITING_DELIVERY => $user->hasRole('Purchasing') || $user->hasRole('Kabag Maintenance'),
+                $user->id === $case->created_by || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']),
+            ProcurementStatus::PENDING_KABAG => 
+                $user->hasAnyRole(['Kabag Maintenance', 'Maintenance Manager', 'Admin Maintenance', 'Maintenance Administrator']),
+            ProcurementStatus::PENDING_DIR => 
+                $user->hasAnyRole(['Direktur', 'Director', 'Kabag Maintenance', 'Maintenance Manager']),
+            ProcurementStatus::PROCESSING, ProcurementStatus::WAITING_DELIVERY => 
+                $user->hasAnyRole(['Purchasing', 'Kabag Maintenance', 'Maintenance Manager']),
             default => false,
         };
     }
@@ -175,6 +191,6 @@ class ProcurementCasePolicy
             return false;
         }
 
-        return $attachment->uploaded_by === $user->id || $user->hasRole('Admin Maintenance');
+        return $attachment->uploaded_by === $user->id || $user->hasAnyRole(['Admin Maintenance', 'Maintenance Administrator']);
     }
 }

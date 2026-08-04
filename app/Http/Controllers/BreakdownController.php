@@ -14,6 +14,8 @@ class BreakdownController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless(auth()->user()->can('breakdown.view'), 403);
+
         $activeBreakdownsCount = MaintenancePlan::corrective()
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->count();

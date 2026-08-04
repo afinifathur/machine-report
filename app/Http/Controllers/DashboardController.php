@@ -28,6 +28,8 @@ class DashboardController extends Controller
      */
     public function index()
     {
+        abort_unless(auth()->user()->can('dashboard.view'), 403);
+
         $today = Carbon::today();
 
         // -------------------------------------------------------------

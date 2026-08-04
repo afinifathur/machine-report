@@ -22,6 +22,8 @@ class SparepartIntegrationController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
+
         // ---------------------------------------------------------
         // A. MACHINE MAPPING HEALTH DATA
         // ---------------------------------------------------------
@@ -192,6 +194,8 @@ class SparepartIntegrationController extends Controller
      */
     public function show(string $erpCode)
     {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
+
         $code = strtoupper(trim($erpCode));
 
         // Get mapping details
@@ -239,6 +243,8 @@ class SparepartIntegrationController extends Controller
      */
     public function unmappedMachines()
     {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
+
         $mappedMachineIds = MachineRequiredSparepart::pluck('machine_id')->unique()->toArray();
         
         $unmappedMachines = Machine::where('is_active', true)

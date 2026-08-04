@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 
 class MachineDocumentPhotoController extends Controller
 {
@@ -26,6 +27,7 @@ class MachineDocumentPhotoController extends Controller
     public function storeDocument(Request $request, string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
 
         $allowedTypes = [
             'manual_book',
@@ -109,6 +111,7 @@ class MachineDocumentPhotoController extends Controller
     public function downloadDocument(string $code, string $type)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('view', $machine);
         $document = $machine->documents()->where('type', $type)->firstOrFail();
 
         if (!Storage::disk('public')->exists($document->file_path)) {
@@ -124,6 +127,7 @@ class MachineDocumentPhotoController extends Controller
     public function destroyDocument(string $code, string $type)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $document = $machine->documents()->where('type', $type)->firstOrFail();
 
         // Delete physical file
@@ -150,6 +154,7 @@ class MachineDocumentPhotoController extends Controller
     public function indexPhotos(Request $request, string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('view', $machine);
 
         $query = $machine->photos()->with('uploader');
 
@@ -209,6 +214,7 @@ class MachineDocumentPhotoController extends Controller
     public function storePhoto(Request $request, string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
 
         $allowedCategories = ['reference', 'name_plate', 'inspection', 'breakdown', 'repair', 'other'];
         $legacyTypes = ['overall', 'electrical_cabinet', 'hydraulic_unit', 'control_panel', 'before_repair', 'after_repair'];
@@ -279,6 +285,7 @@ class MachineDocumentPhotoController extends Controller
     public function updatePhoto(Request $request, string $code, $photoId)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $photo = $machine->photos()->where('id', $photoId)->firstOrFail();
 
         $allowedCategories = ['reference', 'name_plate', 'inspection', 'breakdown', 'repair', 'other'];
@@ -320,6 +327,7 @@ class MachineDocumentPhotoController extends Controller
     public function destroyPhoto(string $code, $photoIdentifier)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
 
         if (is_numeric($photoIdentifier)) {
             $photo = $machine->photos()->where('id', $photoIdentifier)->firstOrFail();
@@ -360,6 +368,7 @@ class MachineDocumentPhotoController extends Controller
     public function rotatePhoto(Request $request, string $code, $photoId)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $photo = $machine->photos()->where('id', $photoId)->firstOrFail();
 
         $direction = $request->input('direction', 'right'); // 'left' | 'right'

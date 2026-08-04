@@ -54,26 +54,38 @@
             
             <div class="flex flex-wrap gap-3 pt-4 border-t border-outline-variant">
                 @if($activePlan)
+                    @can('planning.execute')
                     <x-button variant="primary" icon="qr_code_scanner" href="{{ route('planning.execute', $activePlan->id) }}">
                         Eksekusi Perawatan
                     </x-button>
+                    @endcan
+                    @can('planning.view')
                     <x-button variant="secondary" icon="visibility" href="{{ route('planning.show', $activePlan->id) }}">
                         Audit Kesiapan
                     </x-button>
+                    @endcan
                 @else
+                    @can('planning.create')
                     <x-button variant="primary" icon="calendar_today" href="{{ route('planning.index') }}">
                         Buat Jadwal Perawatan
                     </x-button>
+                    @endcan
                 @endif
+                @can('breakdown.create')
                 <x-button variant="secondary" icon="stethoscope" href="{{ route('breakdowns.index') }}">
                     Laporkan Kerusakan
                 </x-button>
+                @endcan
+                @can('machine.edit')
                 <x-button variant="secondary" icon="edit" href="{{ route('machines.edit', $machine->code) }}">
                     Edit Paspor
                 </x-button>
+                @endcan
+                @can('report.view')
                 <x-button variant="secondary" icon="ios_share" href="#">
                     Ekspor Riwayat
                 </x-button>
+                @endcan
             </div>
         </div>
     </div>

@@ -9,6 +9,7 @@ use App\Models\MasterMachineCategory;
 use App\Repositories\WarehouseRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 
 class MachineController extends Controller
 {
@@ -24,6 +25,8 @@ class MachineController extends Controller
      */
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Machine::class);
+
         $query = Machine::query()->with(['photos', 'productionArea']);
 
         // 1. Lifecycle Status Filter (Default to ACTIVE)
@@ -139,6 +142,7 @@ class MachineController extends Controller
      */
     public function create()
     {
+        Gate::authorize('create', Machine::class);
         $departments = MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
         $categories = MasterMachineCategory::where('is_active', true)->orderBy('sort_order')->get();
         $productionAreas = \App\Models\MasterProductionArea::where('is_active', true)->orderBy('sort_order')->get();
@@ -152,6 +156,7 @@ class MachineController extends Controller
      */
     public function store(Request $request)
     {
+        Gate::authorize('create', Machine::class);
         // Enforce case-insensitive uniqueness and uppercase code
         if ($request->filled('code')) {
             $request->merge(['code' => strtoupper($request->input('code'))]);
@@ -216,6 +221,8 @@ class MachineController extends Controller
             ->where('code', $code)
             ->firstOrFail();
 
+        Gate::authorize('view', $machine);
+
         // Automatically recover QR Code file if missing from disk
         if (!empty($machine->qr_code_path) && !file_exists(public_path($machine->qr_code_path))) {
             app(\App\Services\MachineQrCodeService::class)->ensureExists($machine);
@@ -240,6 +247,8 @@ class MachineController extends Controller
     public function edit(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+
+        Gate::authorize('update', $machine);
         $departments = MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
         $categories = MasterMachineCategory::where('is_active', true)->orderBy('sort_order')->get();
         $productionAreas = \App\Models\MasterProductionArea::where('is_active', true)->orderBy('sort_order')->get();
@@ -254,6 +263,8 @@ class MachineController extends Controller
     public function update(Request $request, string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+
+        Gate::authorize('update', $machine);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -296,6 +307,8 @@ class MachineController extends Controller
     public function destroy(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+
+        Gate::authorize('delete', $machine);
 
         // Perform archive operation instead of physical deletion
         $machine->update([

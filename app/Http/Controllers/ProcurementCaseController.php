@@ -697,4 +697,19 @@ class ProcurementCaseController extends Controller
             return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * Render printable Procurement Case Report (PDF).
+     */
+    public function print(ProcurementCase $procurement, \App\Services\DocumentPdfService $pdfService)
+    {
+        $this->authorize('view', $procurement);
+
+        $pdfContent = $pdfService->generateProcurementCase($procurement);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="procurement_report_' . $procurement->case_number . '.pdf"',
+        ]);
+    }
 }

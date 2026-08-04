@@ -7,6 +7,7 @@ use App\Integrations\WMS\Services\MachineSparepartService;
 use App\Models\Machine;
 use App\Models\MachineRequiredSparepart;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class MachineSparepartController extends Controller
 {
@@ -18,6 +19,7 @@ class MachineSparepartController extends Controller
     public function search(Request $request, string $machineCode)
     {
         $machine = Machine::where('code', $machineCode)->firstOrFail();
+        Gate::authorize('view', $machine);
         
         $query = $request->input('q', '');
         $results = $this->sparepartService->searchSpareparts($query);
@@ -43,6 +45,7 @@ class MachineSparepartController extends Controller
     public function store(Request $request, string $machineCode)
     {
         $machine = Machine::where('code', $machineCode)->firstOrFail();
+        Gate::authorize('update', $machine);
 
         $validated = $request->validate([
             'warehouse_item_code' => 'required|string',
@@ -101,6 +104,8 @@ class MachineSparepartController extends Controller
      */
     public function update(Request $request, string $machineCode, MachineRequiredSparepart $mapping)
     {
+        Gate::authorize('update', $mapping->machine);
+
         $validated = $request->validate([
             'qty_per_machine' => 'required|integer|min:1',
             'lead_time_days' => 'nullable|integer|min:1',
@@ -126,6 +131,8 @@ class MachineSparepartController extends Controller
      */
     public function destroy(string $machineCode, MachineRequiredSparepart $mapping)
     {
+        Gate::authorize('update', $mapping->machine);
+
         $mapping->delete();
 
         if (request()->ajax() || request()->wantsJson()) {

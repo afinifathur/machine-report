@@ -15,6 +15,7 @@
     <!-- Google Fonts & Material Symbols -->
     <link href="{{ asset('css/material-symbols-outlined.css') }}" rel="stylesheet"/>
     <link href="{{ asset('css/geist-jetbrains.css') }}" rel="stylesheet"/>
+    @stack('styles')
     
     <!-- Tailwind Configuration from Design Spec -->
     <script id="tailwind-config">

@@ -11,6 +11,7 @@ use App\Services\Maintenance\BreakdownNumberService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class MaintenancePlanController extends Controller
 {
@@ -30,6 +31,8 @@ class MaintenancePlanController extends Controller
      */
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', MaintenancePlan::class);
+
         $typeFilter = $request->input('type_filter');
 
         $query = MaintenancePlan::with(['machine.documents', 'maintenanceTemplate.checklists', 'maintenanceTemplate.spareparts'])
@@ -151,6 +154,8 @@ class MaintenancePlanController extends Controller
      */
     public function storeBreakdown(Request $request)
     {
+        Gate::authorize('create', [MaintenancePlan::class, 'corrective']);
+
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'reported_by' => 'required|string|max:255',
@@ -195,6 +200,8 @@ class MaintenancePlanController extends Controller
      */
     public function assignTechnician(Request $request, MaintenancePlan $plan)
     {
+        Gate::authorize('assign', $plan);
+
         $validated = $request->validate([
             'assigned_technician' => 'required|string|max:255',
         ]);
@@ -220,6 +227,8 @@ class MaintenancePlanController extends Controller
      */
     public function show(MaintenancePlan $plan)
     {
+        Gate::authorize('view', $plan);
+
         $plan->load([
             'machine.documents',
             'maintenanceTemplate.checklists',
@@ -243,6 +252,8 @@ class MaintenancePlanController extends Controller
      */
     public function update(Request $request, MaintenancePlan $plan)
     {
+        Gate::authorize('update', $plan);
+
         $rules = [
             'target_completion' => 'nullable|date',
             'notes' => 'nullable|string',
@@ -276,6 +287,8 @@ class MaintenancePlanController extends Controller
      */
     public function reportBreakdown(Request $request)
     {
+        Gate::authorize('create', [MaintenancePlan::class, 'corrective']);
+
         $request->merge(['type' => 'corrective']);
         return $this->create($request);
     }
@@ -285,6 +298,8 @@ class MaintenancePlanController extends Controller
      */
     public function preventiveIndex(Request $request)
     {
+        Gate::authorize('viewAny', MaintenancePlan::class);
+
         $todayPmCount = MaintenancePlan::preventive()
             ->whereDate('scheduled_date', now()->toDateString())
             ->count();
@@ -362,6 +377,8 @@ class MaintenancePlanController extends Controller
     public function create(Request $request)
     {
         $type = $request->input('type', 'preventive');
+        Gate::authorize('create', [MaintenancePlan::class, $type]);
+
         $machines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('code')->get();
         $departments = \App\Models\MasterDepartment::where('is_active', true)->orderBy('sort_order')->get();
         $templates = \App\Models\MaintenanceTemplate::where('is_active', true)->orderBy('name')->get();
@@ -379,6 +396,8 @@ class MaintenancePlanController extends Controller
     public function store(Request $request)
     {
         $type = $request->input('type', 'preventive');
+        Gate::authorize('create', [MaintenancePlan::class, $type]);
+
         if ($type === 'corrective') {
             return $this->storeBreakdown($request);
         }

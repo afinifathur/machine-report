@@ -101,8 +101,8 @@ Route::middleware('auth')->group(function () {
         return view('reports.index');
     })->name('reports.index');
 
-    // Administration
     Route::get('/admin', function () {
+        abort_unless(auth()->user()->can('employee.view') || auth()->user()->can('admin.manage.users'), 403);
         $employees = \App\Models\Employee::with(['department', 'position', 'user'])->orderBy('full_name')->get();
         $users = \App\Models\User::with(['roles', 'employee'])->orderBy('name')->get();
         $departments = \App\Models\MasterDepartment::orderBy('sort_order')->get();
@@ -119,6 +119,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.index');
 
     Route::post('/admin/employees', function (Illuminate\Http\Request $request, \App\Services\EmployeeNumberService $empNumService) {
+        abort_unless(auth()->user()->can('employee.manage'), 403);
         $validated = $request->validate([
             'employee_number' => 'required|string|max:255',
             'full_name' => 'required|string|max:255',
@@ -149,6 +150,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.employees.store');
 
     Route::put('/admin/employees/{employee}', function (\App\Models\Employee $employee, Illuminate\Http\Request $request, \App\Services\EmployeeNumberService $empNumService) {
+        abort_unless(auth()->user()->can('employee.manage'), 403);
         $validated = $request->validate([
             'employee_number' => 'required|string|max:255',
             'full_name' => 'required|string|max:255',
@@ -181,6 +183,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.employees.update');
 
     Route::post('/admin/users', function (Illuminate\Http\Request $request) {
+        abort_unless(auth()->user()->can('admin.manage.users'), 403);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -206,6 +209,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.users.store');
 
     Route::put('/admin/users/{user}', function (\App\Models\User $user, Illuminate\Http\Request $request) {
+        abort_unless(auth()->user()->can('admin.manage.users'), 403);
         $validated = $request->validate([
             'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|string|exists:roles,name',
@@ -229,6 +233,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.users.update');
 
     Route::delete('/admin/users/{user}', function (\App\Models\User $user) {
+        abort_unless(auth()->user()->can('admin.manage.users'), 403);
         if ($user->id === auth()->id()) {
             return redirect()->back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
         }
@@ -237,6 +242,7 @@ Route::middleware('auth')->group(function () {
     })->name('admin.users.destroy');
 
     // Procurement Workflow Module
+    Route::get('procurements/{procurement}/print', [ProcurementCaseController::class, 'print'])->name('procurements.print');
     Route::resource('procurements', ProcurementCaseController::class);
     Route::post('procurements/{procurement}/submit', [ProcurementCaseController::class, 'submit'])->name('procurements.submit');
     Route::post('procurements/{procurement}/approve-stage-1', [ProcurementCaseController::class, 'approveStage1'])->name('procurements.approve-stage-1');

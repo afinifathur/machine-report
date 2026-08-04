@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Gate;
 
 class MachineDocumentLinkController extends Controller
 {
@@ -17,6 +18,7 @@ class MachineDocumentLinkController extends Controller
     public function indexLinks(string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('view', $machine);
 
         $links = $machine->documentLinks()
             ->with('creator')
@@ -50,6 +52,7 @@ class MachineDocumentLinkController extends Controller
     public function storeLink(Request $request, string $code)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
 
         $validator = Validator::make($request->all(), [
             'title' => ['required', 'string', 'max:255'],
@@ -110,6 +113,7 @@ class MachineDocumentLinkController extends Controller
     public function updateLink(Request $request, string $code, int $id)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $link = $machine->documentLinks()->findOrFail($id);
 
         $validator = Validator::make($request->all(), [
@@ -167,6 +171,7 @@ class MachineDocumentLinkController extends Controller
     public function destroyLink(string $code, int $id)
     {
         $machine = Machine::where('code', $code)->firstOrFail();
+        Gate::authorize('update', $machine);
         $link = $machine->documentLinks()->findOrFail($id);
 
         $link->delete();

@@ -195,6 +195,8 @@ class PreventiveMaintenanceWorkspaceTest extends TestCase
      */
     public function test_pm_execution_and_report_generation(): void
     {
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-08-01 09:00:00'));
+
         $plan = MaintenancePlan::create([
             'machine_id' => $this->machine->id,
             'maintenance_template_id' => $this->template->id,
@@ -235,6 +237,8 @@ class PreventiveMaintenanceWorkspaceTest extends TestCase
         $responsePdf = $this->get(route('planning.report', $plan->id));
         $responsePdf->assertStatus(200);
         $responsePdf->assertHeader('Content-Type', 'application/pdf');
+
+        \Carbon\Carbon::setTestNow();
     }
 
     /**
