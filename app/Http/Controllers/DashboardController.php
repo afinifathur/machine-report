@@ -28,7 +28,14 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        abort_unless(auth()->user()->can('dashboard.view'), 403);
+        $user = auth()->user();
+        if (! $user->can('dashboard.view')) {
+            if ($user->can('procurement.view'))  return redirect()->route('procurements.index');
+            if ($user->can('planning.view'))     return redirect()->route('planning.index');
+            if ($user->can('preventive.view'))   return redirect()->route('preventive.index');
+            if ($user->can('machine.view'))      return redirect()->route('machines.index');
+            abort(403);
+        }
 
         $today = Carbon::today();
 
