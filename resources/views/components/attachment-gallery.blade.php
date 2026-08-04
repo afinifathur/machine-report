@@ -42,14 +42,14 @@
 @endonce
 
 <div class="space-y-6">
-    {{ -- Image Gallery Section -- }}
+    {{-- Image Gallery Section --}}
     @if($images->isNotEmpty())
         <div class="space-y-3">
             <h4 class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Dokumentasi Visual (Gambar)</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 @foreach($images as $attachment)
                     <div class="group relative bg-surface-container rounded-xl border border-outline-variant overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-                        {{ -- Image Preview Card -- }}
+                        {{-- Image Preview Card --}}
                         <div class="relative aspect-video bg-surface-bright overflow-hidden">
                             <a href="{{ asset($storagePath . $attachment->stored_filename) }}" 
                                class="glightbox-gallery block w-full h-full"
@@ -66,7 +66,7 @@
                             </a>
                         </div>
                         
-                        {{ -- Metadata & Action Section -- }}
+                        {{-- Metadata & Action Section --}}
                         <div class="p-3 space-y-2 bg-surface-container-lowest">
                             <div class="min-w-0">
                                 <p class="text-[10px] text-on-surface-variant font-semibold truncate" title="{{ $attachment->original_filename }}">
@@ -120,7 +120,7 @@
         </div>
     @endif
 
-    {{ -- Non-Image Documents Section -- }}
+    {{-- Non-Image Documents Section --}}
     @if($nonImages->isNotEmpty())
         <div class="space-y-3">
             <h4 class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Dokumen Lampiran (PDF, Excel, Word, dll.)</h4>
