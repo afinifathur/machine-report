@@ -8,9 +8,18 @@
     <x-page-header 
         title="Detail Pengadaan: {{ $procurement->case_number }}" 
         subtitle="Informasi status pelacakan pengadaan" 
-        class="mb-6" 
+        class="mb-4" 
         back-url="{{ route('procurements.index') }}"
     />
+
+    <div class="mb-6 flex justify-end">
+        <a href="{{ route('procurements.print', $procurement) }}"
+           target="_blank"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary hover:bg-primary hover:text-on-primary text-sm font-semibold transition-colors">
+            <span class="material-symbols-outlined text-[18px]">print</span>
+            Cetak PDF
+        </a>
+    </div>
 
     @if(session('success'))
         <div class="mb-6 p-4 bg-secondary-container text-on-secondary-fixed border border-outline-variant rounded-xl text-body-sm shadow-sm font-semibold">
