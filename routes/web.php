@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
 
     // Breakdowns & Downtime
     Route::get('/breakdowns', [BreakdownController::class, 'index'])->name('breakdowns.index');
+    Route::get('/breakdowns/{plan}', [MaintenancePlanController::class, 'show'])->name('breakdowns.show');
 
     // Spareparts Integration
     Route::get('/spareparts', [SparepartIntegrationController::class, 'index'])->name('spareparts.index');
@@ -84,10 +85,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/planning/{plan}/assign', [MaintenancePlanController::class, 'assignTechnician'])->name('planning.assign-technician');
     Route::get('/planning/{plan}', [MaintenancePlanController::class, 'show'])->name('planning.show');
     Route::put('/planning/{plan}', [MaintenancePlanController::class, 'update'])->name('planning.update');
+    Route::post('/planning/{plan}/cancel', [MaintenancePlanController::class, 'cancel'])->name('planning.cancel');
+    Route::get('/planning/cancel/autocomplete', [MaintenancePlanController::class, 'autocompleteReplacements'])->name('planning.autocomplete-replacements');
 
     // Preventive Maintenance Workspace
     Route::get('/preventive-maintenance', [MaintenancePlanController::class, 'preventiveIndex'])->name('preventive.index');
     Route::get('/preventive-maintenance/create', [MaintenancePlanController::class, 'create'])->name('preventive.create');
+    Route::get('/preventive-maintenance/{plan}', [MaintenancePlanController::class, 'show'])->name('preventive.show');
 
     // Mobile/QR Checklist Execution
     Route::get('/machines/qr/{machineCode}/execute', [MaintenanceExecutionController::class, 'qrEntry'])->name('planning.qr-entry');

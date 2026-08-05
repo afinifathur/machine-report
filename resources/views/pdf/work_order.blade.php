@@ -3,8 +3,45 @@
 @section('title', 'Work Order ' . $doc_number)
 
 @section('content')
+    @if($plan->status === 'cancelled')
+        <div style="position: fixed; top: 35%; left: 15%; width: 70%; text-align: center; font-size: 80pt; color: #ffe4e6; transform: rotate(-35deg); font-weight: bold; z-index: -1000; pointer-events: none; text-transform: uppercase; border: 12px solid #ffe4e6; padding: 15px; border-radius: 30px; font-family: sans-serif;">
+            CANCELLED
+        </div>
+    @endif
+
     <!-- Header -->
     @include('pdf.partials.header')
+
+    @if ($plan->status === 'cancelled')
+        <div style="border: 2px solid #dc2626; background-color: #fef2f2; padding: 6px; margin-bottom: 6px; border-radius: 4px;">
+            <div style="font-size: 8pt; font-weight: bold; color: #b91c1c; text-transform: uppercase; margin-bottom: 2px;">
+                Status: Cancelled (Dibatalkan)
+            </div>
+            <table style="width: 100%; border: none; margin: 0; padding: 0;">
+                <tr style="border: none;">
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Alasan Pembatalan:</span> {{ $plan->cancellation_reason }}
+                    </td>
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Dibatalkan Oleh:</span> {{ $plan->cancelledByUser->name ?? 'System' }}
+                    </td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        @if ($plan->replacementPlan)
+                            <span style="font-weight: bold; color: #4b5563;">Laporan Pengganti:</span> 
+                            {{ $plan->replacementPlan->isCorrective() ? $plan->replacementPlan->breakdown_number : $plan->replacementPlan->work_order_number }}
+                        @else
+                            <span style="font-weight: bold; color: #4b5563;">Laporan Pengganti:</span> Tidak ada
+                        @endif
+                    </td>
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Tanggal Batal:</span> {{ $plan->cancelled_at ? $plan->cancelled_at->format('d M Y H:i') : '-' }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
 
     <!-- Details Section -->
     <div class="section-title">1. Document Details</div>

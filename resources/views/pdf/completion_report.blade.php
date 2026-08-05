@@ -3,8 +3,45 @@
 @section('title', 'Completion Report ' . $doc_number)
 
 @section('content')
+    @if($plan->status === 'cancelled')
+        <div style="position: fixed; top: 35%; left: 15%; width: 70%; text-align: center; font-size: 80pt; color: #ffe4e6; transform: rotate(-35deg); font-weight: bold; z-index: -1000; pointer-events: none; text-transform: uppercase; border: 12px solid #ffe4e6; padding: 15px; border-radius: 30px; font-family: sans-serif;">
+            CANCELLED
+        </div>
+    @endif
+
     <!-- Header -->
     @include('pdf.partials.header')
+
+    @if ($plan->status === 'cancelled')
+        <div style="border: 2px solid #dc2626; background-color: #fef2f2; padding: 6px; margin-bottom: 6px; border-radius: 4px;">
+            <div style="font-size: 8pt; font-weight: bold; color: #b91c1c; text-transform: uppercase; margin-bottom: 2px;">
+                Status: Cancelled (Dibatalkan)
+            </div>
+            <table style="width: 100%; border: none; margin: 0; padding: 0;">
+                <tr style="border: none;">
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Alasan Pembatalan:</span> {{ $plan->cancellation_reason }}
+                    </td>
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Dibatalkan Oleh:</span> {{ $plan->cancelledByUser->name ?? 'System' }}
+                    </td>
+                </tr>
+                <tr style="border: none;">
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        @if ($plan->replacementPlan)
+                            <span style="font-weight: bold; color: #4b5563;">Laporan Pengganti:</span> 
+                            {{ $plan->replacementPlan->isCorrective() ? $plan->replacementPlan->breakdown_number : $plan->replacementPlan->work_order_number }}
+                        @else
+                            <span style="font-weight: bold; color: #4b5563;">Laporan Pengganti:</span> Tidak ada
+                        @endif
+                    </td>
+                    <td style="width: 50%; padding: 1px 0; border: none; font-size: 7.5pt; vertical-align: top;">
+                        <span style="font-weight: bold; color: #4b5563;">Tanggal Batal:</span> {{ $plan->cancelled_at ? $plan->cancelled_at->format('d M Y H:i') : '-' }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    @endif
 
     <!-- Details Section -->
     <div class="section-title">1. Document Details</div>
@@ -84,7 +121,44 @@
 
     <!-- Readiness Summary (Historical Evidence) -->
     <div class="section-title">5. Historical Audit Readiness (Before Execution)</div>
-    @include('pdf.partials.readiness')
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 4px;">
+        <tr>
+            <td style="width: 50%; padding: 0 4px 4px 0; border: none; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; background-color: #f9fafb; padding: 4px 6px; text-align: left;">
+                    <div style="font-weight: bold; font-size: 7.5pt; color: #4b5563;">&bull; Mesin</div>
+                    <div style="font-size: 7.5pt; color: #1f2937; margin-top: 1px;">
+                        {{ $readiness['machine_status_text'] ?? 'Running (Siap)' }}
+                    </div>
+                </div>
+            </td>
+            <td style="width: 50%; padding: 0 0 4px 4px; border: none; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; background-color: #f9fafb; padding: 4px 6px; text-align: left;">
+                    <div style="font-weight: bold; font-size: 7.5pt; color: #4b5563;">&bull; Teknisi</div>
+                    <div style="font-size: 7.5pt; color: #1f2937; margin-top: 1px;">
+                        {{ $plan->assigned_technician ?? 'Unassigned' }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 50%; padding: 4px 4px 0 0; border: none; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; background-color: #f9fafb; padding: 4px 6px; text-align: left;">
+                    <div style="font-weight: bold; font-size: 7.5pt; color: #4b5563;">&bull; Manual</div>
+                    <div style="font-size: 7.5pt; color: #1f2937; margin-top: 1px;">
+                        {{ ($readiness['documents_available'] ?? false) ? 'Available' : 'Not Available' }}
+                    </div>
+                </div>
+            </td>
+            <td style="width: 50%; padding: 4px 0 0 4px; border: none; vertical-align: top;">
+                <div style="border: 1px solid #e5e7eb; background-color: #f9fafb; padding: 4px 6px; text-align: left;">
+                    <div style="font-weight: bold; font-size: 7.5pt; color: #4b5563;">&bull; Sparepart</div>
+                    <div style="font-size: 7.5pt; color: #1f2937; margin-top: 1px;">
+                        {{ ($readiness['sparepart_readiness_ready'] ?? false) ? 'Ready' : 'Low Stock' }}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <!-- Consumed Spareparts List -->
     <div class="section-title">6. Consumed Spareparts List</div>
@@ -119,30 +193,113 @@
 
     <!-- Photo Evidence Section -->
     <div class="section-title">7. Photo Evidence</div>
-    <table style="width: 100%; border: 1px solid #d1d5db; margin-bottom: 4px; background-color: #f9fafb;">
-        <tr>
-            <td style="width: 50%; text-align: center; border-right: 1px solid #d1d5db; padding: 4px; vertical-align: middle;">
-                <div style="font-weight: bold; font-size: 6.5pt; text-transform: uppercase; margin-bottom: 2px; color: #4b5563;">Before Repair / PM</div>
-                @if ($photos['before'])
-                    <img src="{{ $photos['before'] }}" style="max-height: 55px; max-width: 100%; object-fit: contain; border-radius: 2px;" alt="Before Photo" />
-                @else
-                    <div style="padding: 10px 0; color: #9ca3af; font-style: italic; font-size: 7pt;">
-                        No Photo Available
-                    </div>
-                @endif
-            </td>
-            <td style="width: 50%; text-align: center; padding: 4px; vertical-align: middle;">
-                <div style="font-weight: bold; font-size: 6.5pt; text-transform: uppercase; margin-bottom: 2px; color: #4b5563;">After Repair / PM</div>
-                @if ($photos['after'])
-                    <img src="{{ $photos['after'] }}" style="max-height: 55px; max-width: 100%; object-fit: contain; border-radius: 2px;" alt="After Photo" />
-                @else
-                    <div style="padding: 10px 0; color: #9ca3af; font-style: italic; font-size: 7pt;">
-                        No Photo Available
-                    </div>
-                @endif
-            </td>
-        </tr>
-    </table>
+    @php
+        $beforePhotos = [];
+        $afterPhotos = [];
+        if ($plan->execution) {
+            foreach ($plan->execution->photos as $photo) {
+                $path = public_path('storage/' . $photo->photo_path);
+                if (file_exists($path)) {
+                    if ($photo->type === 'before') {
+                        $beforePhotos[] = $path;
+                    } elseif ($photo->type === 'after' || $photo->type === 'general') {
+                        $afterPhotos[] = $path;
+                    }
+                }
+            }
+        }
+
+        // Fallback to resolved ones if empty
+        if (empty($beforePhotos) && !empty($photos['before'])) {
+            $beforePhotos[] = $photos['before'];
+        }
+        if (empty($afterPhotos) && !empty($photos['after'])) {
+            $afterPhotos[] = $photos['after'];
+        }
+
+        $hasBefore = count($beforePhotos) > 0;
+        $hasAfter = count($afterPhotos) > 0;
+        $photoHeight = ($hasBefore && $hasAfter) ? 180 : 220;
+        $innerCellHeight = $photoHeight - 12;
+    @endphp
+
+    @if (!$hasBefore && !$hasAfter)
+        <table style="width: 100%; border: 1px solid #d1d5db; margin-bottom: 4px; background-color: #f9fafb; border-collapse: collapse;">
+            <tr>
+                <td style="text-align: center; padding: 15px 0; color: #9ca3af; font-style: italic; font-size: 7.5pt; border: none;">
+                    No Photo Available
+                </td>
+            </tr>
+        </table>
+    @else
+        {{-- Before Repair Section --}}
+        @if ($hasBefore)
+            <div style="font-weight: bold; font-size: 7.5pt; text-transform: uppercase; margin-top: 4px; margin-bottom: 2px; color: #4b5563;">Before Repair</div>
+            @foreach (array_chunk($beforePhotos, 3) as $chunk)
+                <table style="width: 100%; border-collapse: separate; border-spacing: 6px; border: none; margin-bottom: 4px;">
+                    <tr>
+                        @foreach ($chunk as $photo)
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #d1d5db; background: #f9fafb; padding: 6px; border-radius: 4px; height: {{ $photoHeight }}px; text-align: center; vertical-align: middle;">
+                                    <table style="width: 100%; height: {{ $innerCellHeight }}px; border: none; margin: 0; padding: 0;">
+                                        <tr>
+                                            <td style="text-align: center; vertical-align: middle; border: none; padding: 0; height: {{ $innerCellHeight }}px;">
+                                                <img src="{{ $photo }}" style="max-width: 100%; max-height: {{ $innerCellHeight }}px; vertical-align: middle;" />
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: #4b5563; text-align: center;">Before Repair</div>
+                            </td>
+                        @endforeach
+                        @for ($i = count($chunk); $i < 3; $i++)
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #d1d5db; background: #f9fafb; padding: 6px; border-radius: 4px; height: {{ $photoHeight }}px;"></div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: transparent; text-align: center;">&nbsp;</div>
+                            </td>
+                        @endfor
+                    </tr>
+                </table>
+            @endforeach
+        @else
+            <div style="font-weight: bold; font-size: 7.5pt; text-transform: uppercase; margin-top: 4px; margin-bottom: 2px; color: #4b5563;">Before Repair</div>
+            <div style="font-size: 7.5pt; color: #6b7280; font-style: italic; margin-bottom: 4px;">No photo documented.</div>
+        @endif
+
+        {{-- After Repair Section --}}
+        @if ($hasAfter)
+            <div style="font-weight: bold; font-size: 7.5pt; text-transform: uppercase; margin-top: 4px; margin-bottom: 2px; color: #4b5563;">After Repair</div>
+            @foreach (array_chunk($afterPhotos, 3) as $chunk)
+                <table style="width: 100%; border-collapse: separate; border-spacing: 6px; border: none; margin-bottom: 4px;">
+                    <tr>
+                        @foreach ($chunk as $photo)
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #d1d5db; background: #f9fafb; padding: 6px; border-radius: 4px; height: {{ $photoHeight }}px; text-align: center; vertical-align: middle;">
+                                    <table style="width: 100%; height: {{ $innerCellHeight }}px; border: none; margin: 0; padding: 0;">
+                                        <tr>
+                                            <td style="text-align: center; vertical-align: middle; border: none; padding: 0; height: {{ $innerCellHeight }}px;">
+                                                <img src="{{ $photo }}" style="max-width: 100%; max-height: {{ $innerCellHeight }}px; vertical-align: middle;" />
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: #4b5563; text-align: center;">After Repair</div>
+                            </td>
+                        @endforeach
+                        @for ($i = count($chunk); $i < 3; $i++)
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #d1d5db; background: #f9fafb; padding: 6px; border-radius: 4px; height: {{ $photoHeight }}px;"></div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: transparent; text-align: center;">&nbsp;</div>
+                            </td>
+                        @endfor
+                    </tr>
+                </table>
+            @endforeach
+        @else
+            <div style="font-weight: bold; font-size: 7.5pt; text-transform: uppercase; margin-top: 4px; margin-bottom: 2px; color: #4b5563;">After Repair</div>
+            <div style="font-size: 7.5pt; color: #6b7280; font-style: italic; margin-bottom: 4px;">No photo documented.</div>
+        @endif
+    @endif
 
     <!-- Delay Analysis Section -->
     <div class="section-title">8. Delay Analysis</div>

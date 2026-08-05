@@ -1,3 +1,85 @@
+@php
+    $tab = request('tab', 'active');
+    
+    $tabQuery = \App\Models\ProcurementCase::with(['machine', 'creator', 'category']);
+
+    // Duplicate search and filter logic from controller
+    if (request()->filled('search')) {
+        $search = request('search');
+        $tabQuery->where(function ($q) use ($search) {
+            $q->where('case_number', 'like', "%{$search}%")
+              ->orWhere('item_name', 'like', "%{$search}%")
+              ->orWhere('current_owner', 'like', "%{$search}%")
+              ->orWhere('reason', 'like', "%{$search}%")
+              ->orWhereHas('machine', function ($mq) use ($search) {
+                  $mq->where('name', 'like', "%{$search}%");
+              })
+              ->orWhereHas('category', function ($cq) use ($search) {
+                  $cq->where('name', 'like', "%{$search}%");
+              });
+        });
+    }
+
+    if (request()->filled('status')) {
+        $tabQuery->where('status', request('status'));
+    }
+
+    if (request()->filled('status_group')) {
+        $group = request('status_group');
+        if ($group === 'draft') {
+            $tabQuery->where('status', \App\Enums\ProcurementStatus::DRAFT);
+        } elseif ($group === 'pending_approval') {
+            $tabQuery->whereIn('status', [
+                \App\Enums\ProcurementStatus::PENDING_KABAG,
+                \App\Enums\ProcurementStatus::PENDING_DIR,
+                \App\Enums\ProcurementStatus::NEED_INFO
+            ]);
+        } elseif ($group === 'processing') {
+            $tabQuery->whereIn('status', [
+                \App\Enums\ProcurementStatus::PROCESSING,
+                \App\Enums\ProcurementStatus::WAITING_DELIVERY
+            ]);
+        } elseif ($group === 'ready_pickup') {
+            $tabQuery->where('status', \App\Enums\ProcurementStatus::READY_TO_PICKUP);
+        } elseif ($group === 'closed') {
+            $tabQuery->where('status', \App\Enums\ProcurementStatus::CLOSED);
+        }
+    }
+
+    if (request()->filled('urgency')) {
+        $tabQuery->where('urgency', request('urgency'));
+    }
+
+    if (request()->filled('category')) {
+        $tabQuery->where('procurement_category_id', request('category'));
+    }
+
+    if (request()->filled('owner')) {
+        $tabQuery->where('current_owner', request('owner'));
+    }
+
+    if (request()->boolean('my_cases')) {
+        $user = auth()->user();
+        if ($user) {
+            $userRoles = $user->roles->pluck('name')->toArray();
+            $tabQuery->whereIn('current_owner', $userRoles);
+        }
+    }
+
+    // Tab counts
+    $activeCountQuery = (clone $tabQuery)->whereNotIn('status', [\App\Enums\ProcurementStatus::CLOSED, \App\Enums\ProcurementStatus::CANCELLED]);
+    $closedCountQuery = (clone $tabQuery)->whereIn('status', [\App\Enums\ProcurementStatus::CLOSED, \App\Enums\ProcurementStatus::CANCELLED]);
+    
+    $activeCount = $activeCountQuery->count();
+    $closedCount = $closedCountQuery->count();
+
+    if ($tab === 'closed') {
+        $cases = $closedCountQuery->latest()->paginate(10)->withQueryString();
+    } else {
+        $cases = $activeCountQuery->latest()->paginate(20)->withQueryString();
+    }
+@endphp
+
 <x-layouts.app 
     title="Daftar Pengadaan Khusus | Sistem MRM"
     topbar-title="Pengadaan Khusus"
@@ -70,7 +152,7 @@
     <!-- Summary Cards — 2-col on mobile, 5-col on desktop -->
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-4 md:mb-6">
         <!-- Draft -->
-        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'draft', 'status' => ''])) }}" 
+        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'draft', 'status' => '', 'tab' => 'active'])) }}" 
            class="p-3 md:p-4 rounded-xl border transition-all flex items-center gap-3 shadow-sm
            {{ request('status_group') === 'draft' ? 'bg-primary-fixed text-on-primary-fixed border-primary' : 'bg-surface-container-lowest hover:bg-surface-bright border-outline-variant text-on-surface' }}">
             <span class="material-symbols-outlined text-[28px] md:text-[32px] {{ request('status_group') === 'draft' ? 'text-primary' : 'text-secondary' }}">edit_note</span>
@@ -80,7 +162,7 @@
             </div>
         </a>
         <!-- Pending Approval -->
-        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'pending_approval', 'status' => ''])) }}" 
+        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'pending_approval', 'status' => '', 'tab' => 'active'])) }}" 
            class="p-3 md:p-4 rounded-xl border transition-all flex items-center gap-3 shadow-sm
            {{ request('status_group') === 'pending_approval' ? 'bg-primary-fixed text-on-primary-fixed border-primary' : 'bg-surface-container-lowest hover:bg-surface-bright border-outline-variant text-on-surface' }}">
             <span class="material-symbols-outlined text-[28px] md:text-[32px] {{ request('status_group') === 'pending_approval' ? 'text-primary' : 'text-secondary' }}">gavel</span>
@@ -90,7 +172,7 @@
             </div>
         </a>
         <!-- Processing -->
-        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'processing', 'status' => ''])) }}" 
+        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'processing', 'status' => '', 'tab' => 'active'])) }}" 
            class="p-3 md:p-4 rounded-xl border transition-all flex items-center gap-3 shadow-sm
            {{ request('status_group') === 'processing' ? 'bg-primary-fixed text-on-primary-fixed border-primary' : 'bg-surface-container-lowest hover:bg-surface-bright border-outline-variant text-on-surface' }}">
             <span class="material-symbols-outlined text-[28px] md:text-[32px] {{ request('status_group') === 'processing' ? 'text-primary' : 'text-secondary' }}">local_shipping</span>
@@ -100,7 +182,7 @@
             </div>
         </a>
         <!-- Ready Pickup -->
-        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'ready_pickup', 'status' => ''])) }}" 
+        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'ready_pickup', 'status' => '', 'tab' => 'active'])) }}" 
            class="p-3 md:p-4 rounded-xl border transition-all flex items-center gap-3 shadow-sm
            {{ request('status_group') === 'ready_pickup' ? 'bg-primary-fixed text-on-primary-fixed border-primary' : 'bg-surface-container-lowest hover:bg-surface-bright border-outline-variant text-on-surface' }}">
             <span class="material-symbols-outlined text-[28px] md:text-[32px] {{ request('status_group') === 'ready_pickup' ? 'text-primary' : 'text-secondary' }}">hail</span>
@@ -110,7 +192,7 @@
             </div>
         </a>
         <!-- Closed -->
-        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'closed', 'status' => ''])) }}" 
+        <a href="{{ route('procurements.index', array_merge(request()->except('page'), ['status_group' => 'closed', 'status' => '', 'tab' => 'closed'])) }}" 
            class="p-3 md:p-4 rounded-xl border transition-all flex items-center gap-3 shadow-sm
            {{ request('status_group') === 'closed' ? 'bg-primary-fixed text-on-primary-fixed border-primary' : 'bg-surface-container-lowest hover:bg-surface-bright border-outline-variant text-on-surface' }}">
             <span class="material-symbols-outlined text-[28px] md:text-[32px] {{ request('status_group') === 'closed' ? 'text-primary' : 'text-secondary' }}">check_circle</span>
@@ -130,6 +212,9 @@
         <form action="{{ route('procurements.index') }}" method="GET" id="filter-form">
             @if(request('status_group'))
                 <input type="hidden" name="status_group" value="{{ request('status_group') }}">
+            @endif
+            @if(request('tab'))
+                <input type="hidden" name="tab" value="{{ request('tab') }}">
             @endif
 
             {{-- ── Search row (always visible on all sizes) ──}}
@@ -242,6 +327,18 @@
                 </button>
             </div>
         </form>
+    </div>
+
+    <!-- Tabs Segmented Buttons -->
+    <div class="mb-4 md:mb-6 flex gap-2 border-b border-outline-variant pb-px">
+        <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'active'])) }}" 
+           class="px-5 py-3 font-semibold text-sm transition-all border-b-2 {{ $tab !== 'closed' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-on-surface' }}">
+            Aktif ({{ $activeCount }})
+        </a>
+        <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'closed'])) }}" 
+           class="px-5 py-3 font-semibold text-sm transition-all border-b-2 {{ $tab === 'closed' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-on-surface' }}">
+            Selesai ({{ $closedCount }})
+        </a>
     </div>
 
     <!-- ================================================================

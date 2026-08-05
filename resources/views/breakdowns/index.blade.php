@@ -112,6 +112,7 @@
                     <option value="reported" {{ request('status') === 'reported' ? 'selected' : '' }}>Reported</option>
                     <option value="assigned" {{ request('status') === 'assigned' ? 'selected' : '' }}>Assigned</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                    <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
             </div>
 
@@ -181,6 +182,7 @@
                                 'reported' => 'bg-rose-100 text-rose-850 border border-rose-200',
                                 'assigned' => 'bg-amber-100 text-amber-850 border border-amber-200',
                                 'completed' => 'bg-emerald-100 text-emerald-850 border border-emerald-200',
+                                'cancelled' => 'bg-slate-150 text-slate-500 border border-slate-250',
                                 default => 'bg-slate-100 text-slate-800 border border-slate-200',
                             };
 
@@ -246,16 +248,18 @@
                                         <span class="material-symbols-outlined text-[13px]">engineering</span>
                                         Tugaskan
                                     </button>
-                                @elseif($plan->status === 'assigned')
+                                @endif
+                                @if($plan->status === 'assigned')
                                     <a href="{{ route('planning.execute', $plan->id) }}" 
                                        class="h-[26px] bg-orange-500 hover:bg-orange-600 text-white px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none">
                                         <span class="material-symbols-outlined text-[13px]">qr_code_scanner</span>
                                         Verifikasi
                                     </a>
-                                @elseif($plan->status === 'completed')
+                                @endif
+                                @if($plan->status === 'completed' || $plan->status === 'cancelled')
                                     <a href="{{ route('planning.show', $plan->id) }}" 
-                                       class="h-[26px] bg-green-600 hover:bg-green-700 text-white px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none">
-                                        <span class="material-symbols-outlined text-[13px]">visibility</span>
+                                       class="h-[26px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none"
+                                       title="Detail">
                                         Detail
                                     </a>
                                 @endif
@@ -285,9 +289,10 @@
                         'reported' => 'bg-rose-100 text-rose-850 border border-rose-200',
                         'assigned' => 'bg-amber-100 text-amber-850 border border-amber-200',
                         'completed' => 'bg-emerald-100 text-emerald-850 border border-emerald-200',
+                        'cancelled' => 'bg-slate-150 text-slate-500 border border-slate-250',
                         default => 'bg-slate-100 text-slate-800 border border-slate-200',
                     };
-
+ 
                     $machineStatusClass = match($plan->machine->operational_status) {
                         'running' => 'bg-emerald-500',
                         'idle' => 'bg-yellow-500',
@@ -302,15 +307,15 @@
                             {{ $plan->priority }}
                         </span>
                     </div>
-
+ 
                     <div class="space-y-0.5">
-                        <h3 class="text-xs font-bold text-slate-800">{{ $plan->machine->name }}</h3>
+                        <h3 class="text-xs font-bold text-slate-850">{{ $plan->machine->name }}</h3>
                         <div class="flex items-center gap-1.5">
                             <span class="w-1.5 h-1.5 rounded-full {{ $machineStatusClass }}"></span>
                             <span class="text-[9px] uppercase font-bold text-slate-400 font-mono">{{ $plan->machine->code }} ({{ $plan->machine->operational_status }})</span>
                         </div>
                     </div>
-
+ 
                     <div class="grid grid-cols-2 gap-2 text-[11px] border-t border-slate-100 pt-2 text-slate-500">
                         <div>
                             <span class="block text-[8px] uppercase font-bold text-slate-400">Dilaporkan</span>
@@ -318,7 +323,7 @@
                         </div>
                         <div>
                             <span class="block text-[8px] uppercase font-bold text-slate-400">Teknisi</span>
-                            <span class="font-semibold text-slate-700 text-[10px]">{{ $plan->assigned_technician ?? '-' }}</span>
+                            <span class="font-semibold text-slate-750 text-[10px]">{{ $plan->assigned_technician ?? '-' }}</span>
                         </div>
                         <div>
                             <span class="block text-[8px] uppercase font-bold text-slate-400">Downtime</span>
@@ -329,7 +334,7 @@
                             <span class="inline-block text-[8px] uppercase px-2 rounded-full font-bold {{ $statusClass }}">{{ $plan->status }}</span>
                         </div>
                     </div>
-
+ 
                     <div class="pt-2 border-t border-slate-100 flex justify-end">
                         @if($plan->status === 'reported')
                             <button type="button" 
@@ -344,11 +349,11 @@
                                 <span class="material-symbols-outlined text-[15px]">qr_code_scanner</span>
                                 Mulai Verifikasi Paspor
                             </a>
-                        @elseif($plan->status === 'completed')
+                        @elseif($plan->status === 'completed' || $plan->status === 'cancelled')
                             <a href="{{ route('planning.show', $plan->id) }}" 
-                               class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border border-green-200">
+                               class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 border border-slate-200">
                                 <span class="material-symbols-outlined text-[15px]">visibility</span>
-                                Lihat Detail Audit
+                                Lihat Detail
                             </a>
                         @endif
                     </div>

@@ -215,154 +215,41 @@
         </tr>
     </table>
 
-    <!-- Section 2: Approval Timeline -->
-    <div class="section-header">2. Approval Timeline</div>
-    <table class="timeline-table">
-        <thead>
-            <tr>
-                <th style="width: 25%;">Workflow Stage</th>
-                <th style="width: 20%;">Approval Status</th>
-                <th style="width: 20%;">Signer / Authorized</th>
-                <th style="width: 35%;">Action Notes</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{-- Stage 1: Request Creation --}}
-            <tr>
-                <td class="font-bold">1. Admin Maintenance</td>
-                <td><span class="status-badge status-approved">✔ SUBMITTED</span></td>
-                <td>{{ $case->creator->name ?? '-' }}</td>
-                <td>Request created and workflow initialized.</td>
-            </tr>
-
-            {{-- Stage 2: Kabag Approval --}}
-            @php
-                $kabagApp = $case->approvals->where('stage', 1)->first();
-            @endphp
-            <tr>
-                <td class="font-bold">2. Kabag Maintenance</td>
-                <td>
-                    @if($kabagApp)
-                        @if($kabagApp->decision === 'approved')
-                            <span class="status-badge status-approved">✔ APPROVED</span>
-                        @elseif($kabagApp->decision === 'rejected')
-                            <span class="status-badge status-rejected">✘ REJECTED</span>
-                        @else
-                            <span class="status-badge status-returned">↩ NEED INFO</span>
-                        @endif
-                    @elseif($case->status->value === 'draft' || $case->status->value === 'need_info')
-                        <span class="status-badge status-pending">DRAFT / WAITING</span>
-                    @elseif($case->status->value === 'pending_kabag')
-                        <span class="status-badge status-pending" style="background-color: #fef08a; color: #854d0e;">● PENDING</span>
-                    @else
-                        <span class="status-badge status-approved">✔ APPROVED BYPASS</span>
-                    @endif
-                </td>
-                <td>{{ $kabagApp->user->name ?? ($kabagApp ? 'Kabag' : '-') }}</td>
-                <td>{{ $kabagApp->note ?? ($case->status->value === 'pending_kabag' ? 'Awaiting review from Maintenance Manager.' : '-') }}</td>
-            </tr>
-
-            {{-- Stage 3: Director Approval --}}
-            @php
-                $dirApp = $case->approvals->where('stage', 2)->first();
-            @endphp
-            <tr>
-                <td class="font-bold">3. Director</td>
-                <td>
-                    @if($dirApp)
-                        @if($dirApp->decision === 'approved')
-                            <span class="status-badge status-approved">✔ APPROVED</span>
-                        @elseif($dirApp->decision === 'rejected')
-                            <span class="status-badge status-rejected">✘ REJECTED</span>
-                        @else
-                            <span class="status-badge status-returned">↩ NEED INFO</span>
-                        @endif
-                    @elseif(in_array($case->status->value, ['draft', 'need_info', 'pending_kabag']))
-                        <span class="status-badge status-pending">WAITING PREV</span>
-                    @elseif($case->status->value === 'pending_dir')
-                        <span class="status-badge status-pending" style="background-color: #fef08a; color: #854d0e;">● PENDING</span>
-                    @else
-                        <span class="status-badge status-approved">✔ APPROVED BYPASS</span>
-                    @endif
-                </td>
-                <td>{{ $dirApp->user->name ?? ($dirApp ? 'Director' : '-') }}</td>
-                <td>{{ $dirApp->note ?? ($case->status->value === 'pending_dir' ? 'Awaiting final approval from Executive Board.' : '-') }}</td>
-            </tr>
-
-            {{-- Stage 4: Purchasing --}}
-            <tr>
-                <td class="font-bold">4. Purchasing Process</td>
-                <td>
-                    @if($case->po_number)
-                        <span class="status-badge status-approved">✔ PO INPUTTED</span>
-                    @elseif(in_array($case->status->value, ['draft', 'need_info', 'pending_kabag', 'pending_dir']))
-                        <span class="status-badge status-pending">WAITING APPROVAL</span>
-                    @elseif($case->status->value === 'processing')
-                        <span class="status-badge status-pending" style="background-color: #fef08a; color: #854d0e;">● PROCESSING</span>
-                    @else
-                        <span class="status-badge status-approved">✔ PROCESSED</span>
-                    @endif
-                </td>
-                <td>Purchasing Dept</td>
-                <td>
-                    @if($case->po_number)
-                        PO: {{ $case->po_number }} | Vendor: {{ $case->vendor_name ?? '-' }}
-                    @else
-                        -
-                    @endif
-                </td>
-            </tr>
-
-            {{-- Stage 5: Warehouse Delivery --}}
-            <tr>
-                <td class="font-bold">5. Warehouse Receiving</td>
-                <td>
-                    @if($case->rack_location)
-                        <span class="status-badge status-approved">✔ ARRIVED</span>
-                    @elseif(in_array($case->status->value, ['draft', 'need_info', 'pending_kabag', 'pending_dir', 'processing']))
-                        <span class="status-badge status-pending">WAITING PO</span>
-                    @elseif($case->status->value === 'waiting_delivery')
-                        <span class="status-badge status-pending" style="background-color: #fef08a; color: #854d0e;">● IN TRANSIT</span>
-                    @else
-                        <span class="status-badge status-approved">✔ ARRIVED</span>
-                    @endif
-                </td>
-                <td>Warehouse Dept</td>
-                <td>
-                    @if($case->rack_location)
-                        Location: {{ $case->rack_location }}
-                    @else
-                        -
-                    @endif
-                </td>
-            </tr>
-
-            {{-- Stage 6: Completion / Pickup --}}
-            <tr>
-                <td class="font-bold">6. Completed / Closed</td>
-                <td>
-                    @if($case->status->value === 'closed')
-                        <span class="status-badge status-approved">✔ CLOSED</span>
-                    @elseif($case->status->value === 'cancelled')
-                        <span class="status-badge status-rejected">✘ CANCELLED</span>
-                    @elseif($case->status->value === 'ready_to_pickup')
-                        <span class="status-badge status-pending" style="background-color: #fef08a; color: #854d0e;">● READY TO PICKUP</span>
-                    @else
-                        <span class="status-badge status-pending">IN PROGRESS</span>
-                    @endif
-                </td>
-                <td>Admin MTC</td>
-                <td>
-                    @if($case->status->value === 'closed')
-                        Sparepart picked up and request archived.
-                    @elseif($case->status->value === 'cancelled')
-                        Request cancelled.
-                    @else
-                        -
-                    @endif
-                </td>
-            </tr>
-        </tbody>
+    <!-- Section 2: Approval Summary -->
+    <div class="section-header">2. Approval Summary</div>
+    <table class="summary-table" style="margin-bottom: 5px;">
+        <tr>
+            <td class="bg-gray" style="width: 25%;"><span class="summary-label">Submitted</span></td>
+            <td style="width: 25%;">
+                @if($approvals['admin'])
+                    <span class="summary-value font-mono">{{ $approvals['admin']['date'] }}</span>
+                @else
+                    <span class="summary-value font-mono">-</span>
+                @endif
+            </td>
+            <td class="bg-gray" style="width: 25%;"><span class="summary-label">Current Status</span></td>
+            <td style="width: 25%;">
+                <span class="summary-value font-mono">{{ strtoupper($case->status->value ?? $case->status) }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="bg-gray"><span class="summary-label">Approved by Kabag</span></td>
+            <td>
+                @if($approvals['kabag'] && $approvals['kabag']['status'] === 'approved')
+                    <span class="summary-value font-mono">{{ $approvals['kabag']['date'] }}</span>
+                @else
+                    <span class="summary-value font-mono">-</span>
+                @endif
+            </td>
+            <td class="bg-gray"><span class="summary-label">Approved by Director</span></td>
+            <td>
+                @if($approvals['director'] && $approvals['director']['status'] === 'approved')
+                    <span class="summary-value font-mono">{{ $approvals['director']['date'] }}</span>
+                @else
+                    <span class="summary-value font-mono">-</span>
+                @endif
+            </td>
+        </tr>
     </table>
 
     <!-- Section 3: Attachment Gallery -->
@@ -378,29 +265,37 @@
     @else
         {{-- Images Grid (defensive tables layout) --}}
         @if(!empty($attachments['images']))
-            <table class="img-grid-table" style="margin-bottom: 5px;">
-                <tr>
-                    @foreach($attachments['images'] as $idx => $imgPath)
-                        <td>
-                            <img src="{{ $imgPath }}" class="img-thumbnail" alt="Attachment" />
-                            <div style="font-size: 5pt; color: #64748b; margin-top: 2px;">Image {{ $idx + 1 }}</div>
-                        </td>
-                        @if(($idx + 1) % 4 == 0 && ($idx + 1) < count($attachments['images']))
-                            </tr><tr>
-                        @endif
-                    @endforeach
-                    
-                    {{-- Fill remaining table cells if row is not full --}}
-                    @php
-                        $rem = count($attachments['images']) % 4;
-                    @endphp
-                    @if($rem > 0)
-                        @for($i = 0; $i < (4 - $rem); $i++)
-                            <td style="border: none; background: transparent;"></td>
+            @foreach (array_chunk($attachments['images'], 3) as $chunkRow => $chunk)
+                <table style="width: 100%; border-collapse: separate; border-spacing: 6px; border: none; margin-bottom: 4px;">
+                    <tr>
+                        @foreach ($chunk as $idxInChunk => $imgPath)
+                            @php
+                                $photoIndex = ($chunkRow * 3) + $idxInChunk + 1;
+                            @endphp
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #cbd5e1; background: #f8fafc; padding: 6px; border-radius: 4px; height: 200px; text-align: center; vertical-align: middle;">
+                                    <table style="width: 100%; height: 188px; border: none; margin: 0; padding: 0;">
+                                        <tr>
+                                            <td style="text-align: center; vertical-align: middle; border: none; padding: 0; height: 188px;">
+                                                <img src="{{ $imgPath }}" style="max-width: 100%; max-height: 188px; vertical-align: middle;" />
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: #4b5563; text-align: center;">
+                                    Photo {{ $photoIndex }}
+                                </div>
+                            </td>
+                        @endforeach
+                        @for ($i = count($chunk); $i < 3; $i++)
+                            <td style="width: 31%; text-align: center; border: none; vertical-align: top; padding: 0;">
+                                <div style="border: 1px solid #cbd5e1; background: #f8fafc; padding: 6px; border-radius: 4px; height: 200px;"></div>
+                                <div style="font-size: 7pt; font-weight: bold; margin-top: 4px; color: transparent; text-align: center;">&nbsp;</div>
+                            </td>
                         @endfor
-                    @endif
-                </tr>
-            </table>
+                    </tr>
+                </table>
+            @endforeach
             @if($attachments['additional_images_count'] > 0)
                 <div style="font-size: 7pt; color: #b91c1c; font-weight: bold; margin-bottom: 6px; background-color: #fef2f2; padding: 4px; border: 1px solid #fee2e2; border-radius: 4px;">
                     + {{ $attachments['additional_images_count'] }} additional attachments. Please scan the QR Code on the header to view all files.
@@ -500,51 +395,8 @@
         </tr>
     </table>
 
-    <!-- Section 6: Audit History -->
-    <div class="section-header">6. Chronological Audit History</div>
-    @if(empty($timeline))
-        <table style="border: 1px solid #cbd5e1; background-color: #f8fafc; margin-bottom: 5px;">
-            <tr>
-                <td style="padding: 8px; text-align: center; color: #94a3b8; font-style: italic;">
-                    No formal approvals processed yet.
-                </td>
-            </tr>
-        </table>
-    @else
-        <table class="timeline-table">
-            <thead>
-                <tr>
-                    <th style="width: 25%;">Stage</th>
-                    <th style="width: 15%;">Decision</th>
-                    <th style="width: 35%;">Comment / Note</th>
-                    <th style="width: 15%;">Datetime</th>
-                    <th style="width: 10%;">User</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($timeline as $item)
-                    <tr>
-                        <td class="font-bold">{{ $item['stage'] }}</td>
-                        <td>
-                            @if(strtolower($item['decision']) === 'approved')
-                                <span class="status-badge status-approved">APPROVED</span>
-                            @elseif(strtolower($item['decision']) === 'rejected')
-                                <span class="status-badge status-rejected">REJECTED</span>
-                            @else
-                                <span class="status-badge status-returned">RETURNED</span>
-                            @endif
-                        </td>
-                        <td>{{ $item['comment'] }}</td>
-                        <td class="font-mono">{{ $item['datetime'] }}</td>
-                        <td>{{ $item['user'] }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    @endif
-
-    <!-- Section 7: Digital Approval Signatures -->
-    <div class="section-header">7. Digital Authorization Signatures</div>
+    <!-- Section 6: Digital Approval Signatures -->
+    <div class="section-header">6. Digital Authorization Signatures</div>
     <table class="sig-table">
         <tr>
             {{-- Admin Maintenance Signature --}}
@@ -552,7 +404,7 @@
                 <div class="sig-title">Admin Maintenance</div>
                 @if($approvals['admin'])
                     <div class="sig-stamp stamp-approved">DIGITAL APPROVED</div>
-                    <div style="font-size: 7pt; font-weight: bold; color: #1e3a8a;">{{ $approvals['admin']['name'] }}</div>
+                    <div style="font-size: 7pt; font-weight: bold; color: #1f2937;">{{ $approvals['admin']['name'] }}</div>
                     <div class="sig-meta">
                         Date: {{ $approvals['admin']['date'] }}<br/>
                         IP: {{ $approvals['admin']['ip'] }}
@@ -571,7 +423,7 @@
                     @else
                         <div class="sig-stamp stamp-rejected">REJECTED</div>
                     @endif
-                    <div style="font-size: 7pt; font-weight: bold; color: #1e3a8a;">{{ $approvals['kabag']['name'] }}</div>
+                    <div style="font-size: 7pt; font-weight: bold; color: #1f2937;">{{ $approvals['kabag']['name'] }}</div>
                     <div class="sig-meta">
                         Date: {{ $approvals['kabag']['date'] }}<br/>
                         IP: {{ $approvals['kabag']['ip'] }}
@@ -593,7 +445,7 @@
                     @else
                         <div class="sig-stamp stamp-rejected">REJECTED</div>
                     @endif
-                    <div style="font-size: 7pt; font-weight: bold; color: #1e3a8a;">{{ $approvals['director']['name'] }}</div>
+                    <div style="font-size: 7pt; font-weight: bold; color: #1f2937;">{{ $approvals['director']['name'] }}</div>
                     <div class="sig-meta">
                         Date: {{ $approvals['director']['date'] }}<br/>
                         IP: {{ $approvals['director']['ip'] }}

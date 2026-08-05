@@ -13,7 +13,7 @@
 
 @once
     @push('styles')
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" />
+        <link rel="stylesheet" href="{{ asset('vendor/glightbox/glightbox.min.css') }}" />
         <style>
             .gslide-title {
                 font-family: inherit;
@@ -26,7 +26,7 @@
         </style>
     @endpush
     @push('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+        <script src="{{ asset('vendor/glightbox/glightbox.min.js') }}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 GLightbox({

@@ -36,6 +36,7 @@ class MaintenancePlanController extends Controller
         $typeFilter = $request->input('type_filter');
 
         $query = MaintenancePlan::with(['machine.documents', 'maintenanceTemplate.checklists', 'maintenanceTemplate.spareparts'])
+            ->where('status', '!=', 'cancelled')
             ->whereHas('machine', function($q) {
                 $q->where('is_active', true)
                   ->where('lifecycle_status', 'ACTIVE');
@@ -101,10 +102,11 @@ class MaintenancePlanController extends Controller
         }
 
         // Calculate summary counters for the filter buttons
-        $allPlans = MaintenancePlan::whereHas('machine', function($q) {
-            $q->where('is_active', true)
-              ->where('lifecycle_status', 'ACTIVE');
-        })->with(['machine', 'maintenanceTemplate.spareparts'])->get();
+        $allPlans = MaintenancePlan::where('status', '!=', 'cancelled')
+            ->whereHas('machine', function($q) {
+                $q->where('is_active', true)
+                  ->where('lifecycle_status', 'ACTIVE');
+            })->with(['machine', 'maintenanceTemplate.spareparts'])->get();
         
         $allPlans->each(function ($p) {
             if ($p->isCorrective()) {
@@ -427,6 +429,89 @@ class MaintenancePlanController extends Controller
 
         return redirect()->route('preventive.index')
             ->with('success', 'Rencana PM berhasil dibuat.');
+    }
+
+    /**
+     * Cancel a maintenance plan.
+     */
+    public function cancel(Request $request, MaintenancePlan $plan)
+    {
+        Gate::authorize('update', $plan);
+
+        if (!$plan->canBeCancelled()) {
+            return redirect()->back()->with('error', 'Status rencana perawatan tidak mengizinkan pembatalan.');
+        }
+
+        $validated = $request->validate([
+            'cancellation_reason' => 'required|string|max:1000',
+            'replacement_id' => 'nullable|exists:maintenance_plans,id',
+        ]);
+
+        $plan->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancelled_by' => auth()->id(),
+            'cancellation_reason' => $validated['cancellation_reason'],
+            'replacement_id' => $validated['replacement_id'] ?? null,
+        ]);
+
+        $redirectRoute = $plan->isPreventive() ? 'preventive.index' : 'breakdowns.index';
+        return redirect()->route($redirectRoute)->with('success', 'Rencana perawatan berhasil dibatalkan.');
+    }
+
+    /**
+     * Autocomplete search endpoint for replacements.
+     */
+    public function autocompleteReplacements(Request $request)
+    {
+        $search = $request->input('search', $request->input('q'));
+        $type = $request->input('type'); // pm or corrective
+
+        if (empty($search)) {
+            return response()->json([]);
+        }
+
+        $query = MaintenancePlan::with(['machine', 'maintenanceTemplate'])
+            ->where('status', '!=', 'cancelled');
+
+        if ($type === 'corrective') {
+            $query->corrective()
+                ->where(function($q) use ($search) {
+                    $q->where('breakdown_number', 'like', "%{$search}%")
+                      ->orWhereHas('machine', function($mq) use ($search) {
+                          $mq->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                      });
+                });
+        } else {
+            $query->preventive()
+                ->where(function($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%")
+                      ->orWhereHas('maintenanceTemplate', function($tq) use ($search) {
+                          $tq->where('name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('machine', function($mq) use ($search) {
+                          $mq->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                      });
+                });
+        }
+
+        $plans = $query->latest()->limit(15)->get();
+
+        $results = $plans->map(function($plan) {
+            if ($plan->isCorrective()) {
+                $text = "{$plan->breakdown_number} — {$plan->machine->name}";
+            } else {
+                $text = "{$plan->work_order_number} — " . ($plan->maintenanceTemplate->name ?? 'PM Template');
+            }
+            return [
+                'id' => $plan->id,
+                'text' => $text,
+            ];
+        });
+
+        return response()->json($results);
     }
 }
 

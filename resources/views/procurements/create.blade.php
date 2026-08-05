@@ -49,8 +49,12 @@
                             class="w-full px-4 py-2.5 bg-surface-container border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary font-body-md text-sm">
                         <option value="">-- Pilih Mesin --</option>
                         @foreach($machines as $machine)
-                            <option value="{{ $machine->id }}" {{ old('machine_id') == $machine->id ? 'selected' : '' }}>
-                                {{ $machine->name }} ({{ $machine->code }})
+                            <option value="{{ $machine->id }}"
+                                    data-code="{{ $machine->code }}"
+                                    data-name="{{ $machine->name }}"
+                                    data-area="{{ $machine->production_area ?? ($machine->productionArea->name ?? '') }}"
+                                    {{ old('machine_id') == $machine->id ? 'selected' : '' }}>
+                                {{ $machine->code }} — {{ $machine->name }}
                             </option>
                         @endforeach
                     </select>
@@ -259,4 +263,78 @@
         }
     }
     </script>
+
+    @push('styles')
+        <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+        <style>
+            /* Tom Select custom styling overrides to match Tailwind / Geist theme */
+            .ts-wrapper .ts-control {
+                width: 100% !important;
+                padding: 10px 16px !important;
+                background-color: var(--color-surface-container, #eceef0) !important;
+                border: 1px solid var(--color-outline-variant, #c4c5d5) !important;
+                border-radius: 8px !important;
+                font-family: 'Geist', sans-serif !important;
+                font-size: 0.875rem !important;
+                color: var(--color-on-surface, #191c1e) !important;
+                box-shadow: none !important;
+                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+            }
+            .ts-wrapper.focus .ts-control {
+                border-color: #00288e !important;
+                outline: 0 !important;
+                box-shadow: 0 0 0 2px rgba(0, 40, 142, 0.2) !important;
+            }
+            .ts-wrapper .ts-control input {
+                font-family: 'Geist', sans-serif !important;
+                font-size: 0.875rem !important;
+                color: var(--color-on-surface, #191c1e) !important;
+            }
+            .ts-dropdown {
+                background-color: #ffffff !important;
+                border: 1px solid #c4c5d5 !important;
+                border-radius: 8px !important;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+                z-index: 50 !important;
+                font-family: 'Geist', sans-serif !important;
+                font-size: 0.875rem !important;
+                margin-top: 4px !important;
+            }
+            .ts-dropdown .option {
+                padding: 8px 16px !important;
+                color: #191c1e !important;
+            }
+            .ts-dropdown .active {
+                background-color: #dde1ff !important;
+                color: #001453 !important;
+            }
+            .ts-dropdown .no-results {
+                padding: 8px 16px !important;
+                color: #444653 !important;
+                font-style: italic !important;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const selectEl = document.getElementById('machine_id');
+                const ts = new TomSelect(selectEl, {
+                    create: false,
+                    searchField: ['value', 'text', 'code', 'name', 'area'],
+                    dataAttr: 'data-*',
+                    render: {
+                        no_results: function(data, escape) {
+                            return '<div class="no-results">No machine found</div>';
+                        }
+                    }
+                });
+                if (selectEl.hasAttribute('autofocus')) {
+                    ts.focus();
+                }
+            });
+        </script>
+    @endpush
 </x-layouts.app>

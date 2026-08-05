@@ -30,6 +30,10 @@ class MaintenancePlan extends Model
         'downtime_duration',
         'target_completion',
         'actual_completion',
+        'cancelled_at',
+        'cancelled_by',
+        'cancellation_reason',
+        'replacement_id',
         'delay_reason',
         'delay_notes',
     ];
@@ -42,6 +46,9 @@ class MaintenancePlan extends Model
         'downtime_duration' => 'integer',
         'target_completion' => 'datetime',
         'actual_completion' => 'datetime',
+        'delay_reason' => 'string',
+        'delay_notes' => 'string',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -147,6 +154,38 @@ class MaintenancePlan extends Model
     public function isCorrective(): bool
     {
         return $this->type === MaintenancePlanType::CORRECTIVE;
+    }
+
+    /**
+     * Get the user who cancelled this plan.
+     */
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    /**
+     * Get the replacement plan for this cancelled plan.
+     */
+    public function replacementPlan(): BelongsTo
+    {
+        return $this->belongsTo(MaintenancePlan::class, 'replacement_id');
+    }
+
+    /**
+     * Check if this plan has been cancelled.
+     */
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    /**
+     * Check if this plan can be cancelled.
+     */
+    public function canBeCancelled(): bool
+    {
+        return in_array($this->status, ['draft', 'reported', 'assigned']) && !$this->relationLoaded('execution') ? !$this->execution()->exists() : !$this->execution;
     }
 
     /**

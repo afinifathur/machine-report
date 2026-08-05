@@ -65,6 +65,50 @@
         };
     @endphp
 
+    @if($plan->isCancelled())
+        <div class="mb-6 p-6 bg-error-container border border-error/30 text-on-error-container rounded-xl shadow-sm flex items-start gap-4">
+            <span class="material-symbols-outlined text-[36px] shrink-0 text-error" style="font-variation-settings: 'FILL' 1;">
+                cancel
+            </span>
+            <div class="space-y-2">
+                <h3 class="font-headline-sm text-headline-sm font-black uppercase text-error">STATUS: CANCELLED</h3>
+                
+                <div>
+                    <span class="block text-xs uppercase font-semibold opacity-70">Alasan Pembatalan / Reason:</span>
+                    <p class="text-body-md font-bold italic">{{ $plan->cancellation_reason }}</p>
+                </div>
+
+                @if($plan->replacementPlan)
+                    <div>
+                        <span class="block text-xs uppercase font-semibold opacity-70">Laporan Pengganti / Replacement Report:</span>
+                        <p class="text-body-md">
+                            @if($plan->replacementPlan->isCorrective())
+                                <a href="{{ route('breakdowns.show', $plan->replacementPlan->id) }}" class="font-bold text-primary hover:underline underline-offset-4">
+                                    {{ $plan->replacementPlan->breakdown_number }}
+                                </a>
+                            @else
+                                <a href="{{ route('preventive.show', $plan->replacementPlan->id) }}" class="font-bold text-primary hover:underline underline-offset-4">
+                                    {{ $plan->replacementPlan->work_order_number }}
+                                </a>
+                            @endif
+                        </p>
+                    </div>
+                @endif
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-error/20 text-xs opacity-80">
+                    <div>
+                        <span class="uppercase font-semibold">Dibatalkan Oleh:</span>
+                        <span class="font-bold">{{ $plan->cancelledByUser->name ?? 'System' }}</span>
+                    </div>
+                    <div>
+                        <span class="uppercase font-semibold">Tanggal Batal:</span>
+                        <span class="font-bold font-mono">{{ $plan->cancelled_at->format('d M Y H:i') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Header Details Card -->
     <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -133,7 +177,7 @@
         </div>
     </div>
 
-    @if($plan->status !== 'completed')
+    @if($plan->status !== 'completed' && $plan->status !== 'cancelled')
         <!-- Adjust target completion and plan details form -->
         <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm mb-6">
             <h3 class="font-headline-sm text-headline-sm text-on-surface mb-3 flex items-center gap-2 font-bold">
@@ -180,7 +224,12 @@
                               class="w-full p-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary italic text-slate-700">{{ $plan->notes }}</textarea>
                 </div>
 
-                <div class="flex justify-end">
+                <div class="flex justify-end gap-3">
+                    @if($plan->canBeCancelled())
+                        <button type="button" onclick="openCancellationModal()" class="bg-error hover:bg-error/95 text-on-error px-5 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow">
+                            Batalkan Rencana
+                        </button>
+                    @endif
                     <button type="submit" class="bg-primary hover:bg-primary/95 text-on-primary px-5 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow">
                         Simpan Perubahan
                     </button>
@@ -189,38 +238,40 @@
         </div>
     @endif
 
-    <!-- Overall Readiness Banner -->
-    <div class="border rounded-xl p-5 flex items-start gap-4 mb-8 shadow-sm {{ $bannerClasses }}">
-        <span class="material-symbols-outlined text-[36px] mt-1 shrink-0" style="font-variation-settings: 'FILL' 1;">
-            {{ $statusIcon }}
-        </span>
-        <div class="flex-1">
-            <h3 class="font-headline-sm text-headline-sm font-bold mb-1">{{ $statusTitle }}</h3>
-            <p class="text-body-md mb-4">{{ $statusSub }}</p>
+    @if($plan->status !== 'cancelled')
+        <!-- Overall Readiness Banner -->
+        <div class="border rounded-xl p-5 flex items-start gap-4 mb-8 shadow-sm {{ $bannerClasses }}">
+            <span class="material-symbols-outlined text-[36px] mt-1 shrink-0" style="font-variation-settings: 'FILL' 1;">
+                {{ $statusIcon }}
+            </span>
+            <div class="flex-1">
+                <h3 class="font-headline-sm text-headline-sm font-bold mb-1">{{ $statusTitle }}</h3>
+                <p class="text-body-md mb-4">{{ $statusSub }}</p>
 
-            @if(count($blockers) > 0)
-                <div class="mb-4">
-                    <span class="text-label-sm font-bold uppercase text-error block mb-1">Masalah Kritis (Blockers):</span>
-                    <ul class="list-disc pl-5 text-body-sm text-on-error-container space-y-1">
-                        @foreach($blockers as $blocker)
-                            <li>{{ $blocker }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+                @if(count($blockers) > 0)
+                    <div class="mb-4">
+                        <span class="text-label-sm font-bold uppercase text-error block mb-1">Masalah Kritis (Blockers):</span>
+                        <ul class="list-disc pl-5 text-body-sm text-on-error-container space-y-1">
+                            @foreach($blockers as $blocker)
+                                <li>{{ $blocker }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-            @if(count($warnings) > 0)
-                <div>
-                    <span class="text-label-sm font-bold uppercase text-orange-800 dark:text-orange-400 block mb-1">Peringatan Persiapan (Warnings):</span>
-                    <ul class="list-disc pl-5 text-body-sm text-on-surface-variant space-y-1">
-                        @foreach($warnings as $warning)
-                            <li>{{ $warning }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
+                @if(count($warnings) > 0)
+                    <div>
+                        <span class="text-label-sm font-bold uppercase text-orange-800 dark:text-orange-400 block mb-1">Peringatan Persiapan (Warnings):</span>
+                        <ul class="list-disc pl-5 text-body-sm text-on-surface-variant space-y-1">
+                            @foreach($warnings as $warning)
+                                <li>{{ $warning }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            </div>
         </div>
-    </div>
+    @endif
 
     <!-- Subsystem Auditing Bento Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -772,15 +823,161 @@
         <a href="{{ route('planning.index') }}" class="bg-surface-container border border-outline-variant hover:bg-surface-container-high text-on-surface px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors">
             Kembali ke Papan Perencanaan
         </a>
-        @if($plan->status !== 'completed')
-            <a href="{{ route('planning.print', $plan->id) }}" target="_blank" class="bg-primary hover:bg-primary/95 text-on-primary px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[20px]">print</span>
-                Cetak Perintah Kerja
-            </a>
-            <a href="{{ route('planning.execute', $plan->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
-                Eksekusi PM (Simulasi QR)
-            </a>
+        @if($plan->status !== 'cancelled')
+            @if($plan->status === 'completed')
+                <a href="{{ route('planning.report', $plan) }}" target="_blank" class="bg-primary hover:bg-primary/95 text-on-primary px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[20px]">print</span>
+                    Print Hasil Kerja
+                </a>
+            @else
+                <a href="{{ route('planning.print', $plan) }}" target="_blank" class="bg-primary hover:bg-primary/95 text-on-primary px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[20px]">print</span>
+                    Cetak Perintah Kerja
+                </a>
+                <a href="{{ route('planning.execute', $plan->id) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg text-body-md font-bold transition-colors shadow flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+                    Eksekusi PM (Simulasi QR)
+                </a>
+            @endif
         @endif
     </div>
+
+    @if($plan->canBeCancelled())
+        <!-- Cancellation Modal -->
+        <div id="cancellation-modal" class="fixed inset-0 z-50 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <!-- Backdrop -->
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeCancellationModal()"></div>
+
+                <!-- Center elements -->
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <!-- Modal panel -->
+                <div class="inline-block align-middle bg-surface-container-lowest border border-outline-variant rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <form action="{{ route('planning.cancel', $plan->id) }}" method="POST" id="cancellation-form">
+                        @csrf
+                        <div class="p-6">
+                            <div class="flex items-center gap-3 mb-4 text-error">
+                                <span class="material-symbols-outlined text-[32px]">warning</span>
+                                <h3 class="text-headline-sm font-bold text-on-surface" id="modal-title">Konfirmasi Pembatalan</h3>
+                            </div>
+                            
+                            <p class="text-body-md text-on-surface-variant mb-4">
+                                Apakah Anda yakin ingin membatalkan rencana perawatan ini? Tindakan ini tidak dapat dibatalkan.
+                            </p>
+
+                            <div class="space-y-4">
+                                <!-- Reason -->
+                                <div>
+                                    <label for="cancellation_reason" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Alasan Pembatalan <span class="text-error">*</span></label>
+                                    <textarea name="cancellation_reason" id="cancellation_reason" rows="3" required
+                                              placeholder="Masukkan alasan pembatalan secara detail..."
+                                              class="w-full p-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                                </div>
+
+                                <!-- Replacement Autocomplete -->
+                                <div class="relative">
+                                    <label for="replacement_search" class="block text-xs font-bold uppercase text-on-surface-variant mb-1 font-semibold">Laporan Pengganti (Opsional)</label>
+                                    <div class="relative">
+                                        <span class="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant opacity-60 text-[20px]">search</span>
+                                        <input type="text" id="replacement_search" placeholder="Cari nomor BD/PM pengganti..." autocomplete="off"
+                                               class="w-full pl-10 pr-4 py-2.5 bg-surface-container border border-outline-variant rounded-lg text-body-md focus:ring-2 focus:ring-primary focus:outline-none"/>
+                                    </div>
+                                    <input type="hidden" name="replacement_id" id="replacement_id"/>
+                                    
+                                    <!-- Autocomplete dropdown list -->
+                                    <div id="replacement-results" class="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto bg-surface-container border border-outline-variant rounded-lg shadow-lg hidden">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="px-6 py-4 bg-surface-container border-t border-outline-variant flex justify-end gap-3">
+                            <button type="button" onclick="closeCancellationModal()" class="px-4 py-2 bg-surface-container border border-outline hover:bg-surface-container-high rounded-lg text-sm font-bold text-on-surface transition-colors">
+                                Batal
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-error hover:bg-error/95 rounded-lg text-sm font-bold text-on-error transition-colors shadow">
+                                Ya, Batalkan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function openCancellationModal() {
+                document.getElementById('cancellation-modal').classList.remove('hidden');
+            }
+
+            function closeCancellationModal() {
+                document.getElementById('cancellation-modal').classList.add('hidden');
+                document.getElementById('cancellation_reason').value = '';
+                document.getElementById('replacement_id').value = '';
+                document.getElementById('replacement_search').value = '';
+                document.getElementById('replacement-results').innerHTML = '';
+                document.getElementById('replacement-results').classList.add('hidden');
+            }
+
+            (function() {
+                const searchInput = document.getElementById('replacement_search');
+                const resultsContainer = document.getElementById('replacement-results');
+                const hiddenInput = document.getElementById('replacement_id');
+                const planType = "{{ $plan->type->value }}"; //pm or corrective
+
+                if (!searchInput || !resultsContainer) return;
+
+                let timeoutId = null;
+
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    hiddenInput.value = ''; // clear previous selection
+                    
+                    if (timeoutId) clearTimeout(timeoutId);
+
+                    if (query.length < 2) {
+                        resultsContainer.innerHTML = '';
+                        resultsContainer.classList.add('hidden');
+                        return;
+                    }
+
+                    timeoutId = setTimeout(() => {
+                        fetch(`{{ route('planning.autocomplete-replacements') }}?q=${encodeURIComponent(query)}&type=${planType}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                resultsContainer.innerHTML = '';
+                                if (data.length === 0) {
+                                    resultsContainer.innerHTML = `<div class="p-3 text-xs text-on-surface-variant italic">Tidak ditemukan rencana pengganti</div>`;
+                                    resultsContainer.classList.remove('hidden');
+                                    return;
+                                }
+
+                                data.forEach(item => {
+                                    const option = document.createElement('div');
+                                    option.className = 'p-3 hover:bg-primary-container hover:text-on-primary-container cursor-pointer text-sm font-medium border-b border-outline-variant last:border-0';
+                                    option.textContent = item.text;
+                                    option.addEventListener('click', function() {
+                                        searchInput.value = item.text;
+                                        hiddenInput.value = item.id;
+                                        resultsContainer.classList.add('hidden');
+                                    });
+                                    resultsContainer.appendChild(option);
+                                });
+                                resultsContainer.classList.remove('hidden');
+                            })
+                            .catch(error => {
+                                console.error('Error fetching replacements:', error);
+                            });
+                    }, 300);
+                });
+
+                // Hide results when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (e.target !== searchInput && e.target !== resultsContainer && !resultsContainer.contains(e.target)) {
+                        resultsContainer.classList.add('hidden');
+                    }
+                });
+            })();
+        </script>
+    @endif
 </x-layouts.app>

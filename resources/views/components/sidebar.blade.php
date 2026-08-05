@@ -1,3 +1,19 @@
+@php
+    $procurementBadgeCount = 0;
+    $user = auth()->user();
+    if ($user) {
+        if ($user->hasAnyRole(['Kabag Maintenance', 'Maintenance Manager'])) {
+            $procurementBadgeCount = \App\Models\ProcurementCase::where('status', \App\Enums\ProcurementStatus::PENDING_KABAG)->count();
+        } elseif ($user->hasAnyRole(['Director', 'Direktur'])) {
+            $procurementBadgeCount = \App\Models\ProcurementCase::where('status', \App\Enums\ProcurementStatus::PENDING_DIR)->count();
+        } elseif ($user->hasRole('Purchasing')) {
+            $procurementBadgeCount = \App\Models\ProcurementCase::where('status', \App\Enums\ProcurementStatus::PROCESSING)
+                ->whereNull('po_number')
+                ->count();
+        }
+    }
+@endphp
+
 <nav id="mobile-drawer" class="h-screen w-72 lg:w-52 fixed left-0 top-0 bg-surface-container dark:bg-surface-container-low border-r border-outline-variant dark:border-outline flex flex-col py-margin-desktop z-50 -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
     <div class="px-4 mb-6">
         <h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed">MRM System</h1>
@@ -56,6 +72,11 @@
            href="{{ route('procurements.index') }}">
             <span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
             <span class="font-body-md text-body-md {{ request()->routeIs('procurements.*') ? 'font-semibold' : '' }}">Pengadaan Khusus</span>
+            @if($procurementBadgeCount > 0)
+                <span class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-error text-[10px] font-bold text-on-error">
+                    {{ $procurementBadgeCount }}
+                </span>
+            @endif
         </a>
         @endcan
 

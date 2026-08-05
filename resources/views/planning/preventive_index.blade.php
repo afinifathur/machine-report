@@ -113,6 +113,7 @@
                     <option value="assigned" {{ request('status') === 'assigned' ? 'selected' : '' }}>Assigned</option>
                     <option value="in_progress" {{ request('status') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                    <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
             </div>
 
@@ -184,6 +185,7 @@
                                 'assigned' => 'bg-amber-100 text-amber-850 border border-amber-200',
                                 'in_progress' => 'bg-blue-100 text-blue-850 border border-blue-200',
                                 'completed' => 'bg-emerald-100 text-emerald-850 border border-emerald-200',
+                                'cancelled' => 'bg-slate-150 text-slate-500 border border-slate-250',
                                 default => 'bg-slate-100 text-slate-800 border border-slate-200',
                             };
                         @endphp
@@ -249,12 +251,14 @@
                                     Audit
                                 </a>
 
-                                <a href="{{ route('planning.print', $plan->id) }}" target="_blank"
-                                   class="h-[26px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none"
-                                   title="Cetak Work Order">
-                                    <span class="material-symbols-outlined text-[13px]">print</span>
-                                    Print
-                                </a>
+                                @if($plan->status !== 'cancelled')
+                                    <a href="{{ route('planning.print', $plan->id) }}" target="_blank"
+                                       class="h-[26px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none"
+                                       title="Cetak Work Order">
+                                        <span class="material-symbols-outlined text-[13px]">print</span>
+                                        Print
+                                    </a>
+                                @endif
 
                                 <a href="{{ route('planning.show', $plan->id) }}" 
                                    class="h-[26px] bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 shadow-none"
@@ -289,6 +293,7 @@
                         'assigned' => 'bg-amber-100 text-amber-850 border border-amber-200',
                         'in_progress' => 'bg-blue-100 text-blue-850 border border-blue-200',
                         'completed' => 'bg-emerald-100 text-emerald-850 border border-emerald-200',
+                        'cancelled' => 'bg-slate-150 text-slate-500 border border-slate-250',
                         default => 'bg-slate-100 text-slate-800 border border-slate-200',
                     };
                 @endphp
@@ -340,11 +345,13 @@
                             Audit
                         </a>
 
-                        <a href="{{ route('planning.print', $plan->id) }}" target="_blank"
-                           class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
-                            <span class="material-symbols-outlined text-[15px]">print</span>
-                            Print
-                        </a>
+                        @if($plan->status !== 'cancelled')
+                            <a href="{{ route('planning.print', $plan->id) }}" target="_blank"
+                               class="bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1">
+                                <span class="material-symbols-outlined text-[15px]">print</span>
+                                Print
+                            </a>
+                        @endif
                     </div>
                 </div>
             @empty
