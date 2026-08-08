@@ -76,11 +76,11 @@
         </div>
         
         <div class="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1 text-xs">
-            <h4 class="font-bold text-slate-800 truncate" title="{{ $plan->isCorrective() ? $plan->breakdown_number : $plan->maintenanceTemplate->name }}">
+            <h4 class="font-bold text-slate-800 truncate" title="{{ $plan->isCorrective() ? $plan->breakdown_number : ($plan->maintenanceTemplate ? $plan->maintenanceTemplate->name : 'PM Plan') }}">
                 @if($plan->isCorrective())
                     BD: {{ $plan->breakdown_number }}
                 @else
-                    PM: {{ $plan->maintenanceTemplate->name }}
+                    PM: {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->name : 'Tanpa SOP' }}
                 @endif
             </h4>
             <div class="flex flex-wrap items-center gap-3 text-slate-500 text-[11px]">
@@ -89,7 +89,7 @@
                     @if($plan->isCorrective())
                         {{ $plan->downtime_duration ?? '-' }}m
                     @else
-                        {{ $plan->maintenanceTemplate->estimated_duration }}m
+                        {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->estimated_duration : 120 }}m
                     @endif
                 </span>
                 <span class="flex items-center gap-1">

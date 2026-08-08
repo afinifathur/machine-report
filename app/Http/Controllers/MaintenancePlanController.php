@@ -406,7 +406,7 @@ class MaintenancePlanController extends Controller
 
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
-            'maintenance_template_id' => 'required|exists:maintenance_templates,id',
+            'maintenance_template_id' => 'nullable|exists:maintenance_templates,id',
             'scheduled_date' => 'required|date',
             'priority' => 'required|string|in:low,medium,high,critical',
             'notes' => 'nullable|string',
@@ -417,7 +417,7 @@ class MaintenancePlanController extends Controller
 
         $plan = MaintenancePlan::create([
             'machine_id' => $validated['machine_id'],
-            'maintenance_template_id' => $validated['maintenance_template_id'],
+            'maintenance_template_id' => $validated['maintenance_template_id'] ?? null,
             'scheduled_date' => Carbon::parse($validated['scheduled_date']),
             'priority' => $validated['priority'],
             'notes' => $validated['notes'],

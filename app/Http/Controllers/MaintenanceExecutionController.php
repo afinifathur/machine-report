@@ -161,7 +161,7 @@ class MaintenanceExecutionController extends Controller
         // Evaluate answers and apply conditional validation rules for PM
         $validator->after(function ($validator) use ($request, $plan) {
             $answers = $request->input('answers', []);
-            $checklistItems = $plan->maintenanceTemplate->checklists;
+            $checklistItems = $plan->maintenanceTemplate ? $plan->maintenanceTemplate->checklists : collect();
 
             foreach ($checklistItems as $item) {
                 $ans = $answers[$item->id] ?? null;

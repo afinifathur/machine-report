@@ -745,7 +745,7 @@
                 
                 <div>
                     <h1 class="text-xl font-black text-slate-800">PEMERIKSAAN PM</h1>
-                    <p class="text-xs text-slate-400 uppercase tracking-widest mt-1">SOP: {{ $plan->maintenanceTemplate->name }}</p>
+                    <p class="text-xs text-slate-400 uppercase tracking-widest mt-1">SOP: {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->name : 'Tanpa SOP (Perencanaan Umum)' }}</p>
                     <div class="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-100 text-left space-y-1.5 text-xs text-slate-600">
                         <div class="flex justify-between">
                             <span class="text-slate-400">Mesin:</span>
@@ -757,7 +757,7 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-slate-400">Rekomendasi Durasi:</span>
-                            <span class="font-semibold text-slate-800 font-mono">{{ $plan->maintenanceTemplate->estimated_duration }} Menit</span>
+                            <span class="font-semibold text-slate-800 font-mono">{{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->estimated_duration : 120 }} Menit</span>
                         </div>
                     </div>
                 </div>
@@ -782,7 +782,7 @@
                     <div class="flex-1">
                         <div class="flex justify-between text-xs font-bold text-slate-500 mb-1">
                             <span>PROGRESS</span>
-                            <span id="progress-text">0 / {{ $plan->maintenanceTemplate->checklists->count() }} Terisi</span>
+                            <span id="progress-text">0 / {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->checklists->count() : 0 }} Terisi</span>
                         </div>
                         <div class="w-full bg-slate-100 rounded-full h-2">
                             <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
@@ -822,68 +822,74 @@
                 <div class="space-y-4">
                     <span class="block text-xs font-bold uppercase text-slate-400 px-1">Daftar Checklist Tindakan</span>
                     
-                    @foreach ($plan->maintenanceTemplate->checklists as $index => $item)
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4 checklist-card transition-all duration-300" id="card-{{ $item->id }}">
-                            
-                            <!-- Header & Info -->
-                            <div>
-                                <div class="flex justify-between items-start gap-2 mb-1.5">
-                                    <h3 class="text-sm font-bold text-slate-800 leading-snug">{{ $item->title }}</h3>
-                                    @if ($item->is_required)
-                                        <span class="px-2 py-0.5 text-[9px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 rounded-md uppercase">Wajib</span>
-                                    @else
-                                        <span class="px-2 py-0.5 text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 rounded-md uppercase">Opsional</span>
-                                    @endif
+                    @if($plan->maintenanceTemplate)
+                        @foreach ($plan->maintenanceTemplate->checklists as $index => $item)
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4 checklist-card transition-all duration-300" id="card-{{ $item->id }}">
+                                
+                                <!-- Header & Info -->
+                                <div>
+                                    <div class="flex justify-between items-start gap-2 mb-1.5">
+                                        <h3 class="text-sm font-bold text-slate-800 leading-snug">{{ $item->title }}</h3>
+                                        @if ($item->is_required)
+                                            <span class="px-2 py-0.5 text-[9px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 rounded-md uppercase">Wajib</span>
+                                        @else
+                                            <span class="px-2 py-0.5 text-[9px] font-bold text-slate-400 bg-slate-50 border border-slate-200 rounded-md uppercase">Opsional</span>
+                                        @endif
+                                    </div>
+                                    <p class="text-xs text-slate-500 leading-normal">{{ $item->description ?? '-' }}</p>
                                 </div>
-                                <p class="text-xs text-slate-500 leading-normal">{{ $item->description ?? '-' }}</p>
-                            </div>
 
-                            <!-- 1-5 Score Buttons -->
-                            <div class="space-y-1.5">
-                                <span class="block text-[10px] font-bold uppercase text-slate-400">Pilih Nilai Kondisi (1-5)</span>
-                                <div class="grid grid-cols-5 gap-2">
-                                    @for ($score = 1; $score <= 5; $score++)
-                                        @php
-                                            $colorClass = match($score) {
-                                                1 => 'peer-checked:bg-rose-500 peer-checked:text-white peer-checked:ring-rose-200',
-                                                2 => 'peer-checked:bg-amber-500 peer-checked:text-white peer-checked:ring-amber-200',
-                                                3 => 'peer-checked:bg-yellow-500 peer-checked:text-white peer-checked:ring-yellow-200',
-                                                4 => 'peer-checked:bg-blue-500 peer-checked:text-white peer-checked:ring-blue-200',
-                                                5 => 'peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:ring-emerald-200',
-                                            };
-                                        @endphp
-                                        <label class="cursor-pointer">
-                                            <input type="radio" 
-                                                   name="answers[{{ $item->id }}][score]" 
-                                                   value="{{ $score }}" 
-                                                   class="sr-only peer score-radio" 
-                                                   data-item-id="{{ $item->id }}"
-                                                   required
-                                                   {{ old("answers.{$item->id}.score") == $score ? 'checked' : '' }}>
-                                            <div class="w-full py-3.5 text-center text-sm font-black text-slate-700 bg-slate-50 border border-slate-200 rounded-xl rating-btn peer-checked:ring-4 peer-checked:border-transparent transition-all {{ $colorClass }}">
-                                                {{ $score }}
-                                            </div>
-                                        </label>
-                                    @endfor
+                                <!-- 1-5 Score Buttons -->
+                                <div class="space-y-1.5">
+                                    <span class="block text-[10px] font-bold uppercase text-slate-400">Pilih Nilai Kondisi (1-5)</span>
+                                    <div class="grid grid-cols-5 gap-2">
+                                        @for ($score = 1; $score <= 5; $score++)
+                                            @php
+                                                $colorClass = match($score) {
+                                                    1 => 'peer-checked:bg-rose-500 peer-checked:text-white peer-checked:ring-rose-200',
+                                                    2 => 'peer-checked:bg-amber-500 peer-checked:text-white peer-checked:ring-amber-200',
+                                                    3 => 'peer-checked:bg-yellow-500 peer-checked:text-white peer-checked:ring-yellow-200',
+                                                    4 => 'peer-checked:bg-blue-500 peer-checked:text-white peer-checked:ring-blue-200',
+                                                    5 => 'peer-checked:bg-emerald-500 peer-checked:text-white peer-checked:ring-emerald-200',
+                                                };
+                                            @endphp
+                                            <label class="cursor-pointer">
+                                                <input type="radio" 
+                                                       name="answers[{{ $item->id }}][score]" 
+                                                       value="{{ $score }}" 
+                                                       class="sr-only peer score-radio" 
+                                                       data-item-id="{{ $item->id }}"
+                                                       required
+                                                       {{ old("answers.{$item->id}.score") == $score ? 'checked' : '' }}>
+                                                <div class="w-full py-3.5 text-center text-sm font-black text-slate-700 bg-slate-50 border border-slate-200 rounded-xl rating-btn peer-checked:ring-4 peer-checked:border-transparent transition-all {{ $colorClass }}">
+                                                    {{ $score }}
+                                                </div>
+                                            </label>
+                                        @endfor
+                                    </div>
+                                    <div class="flex justify-between text-[9px] text-slate-400 px-1 pt-0.5">
+                                        <span class="font-bold text-rose-500">1 (Rusak Berat)</span>
+                                        <span class="font-bold text-emerald-500">5 (Sangat Baik)</span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between text-[9px] text-slate-400 px-1 pt-0.5">
-                                    <span class="font-bold text-rose-500">1 (Rusak Berat)</span>
-                                    <span class="font-bold text-emerald-500">5 (Sangat Baik)</span>
+
+                                <!-- Conditional Remarks Input -->
+                                <div id="remarks-container-{{ $item->id }}" class="hidden space-y-2">
+                                    <label for="remarks-{{ $item->id }}" class="block text-xs font-bold uppercase text-rose-700">Catatan Kerusakan / Temuan</label>
+                                    <textarea name="answers[{{ $item->id }}][remarks]" 
+                                              id="remarks-{{ $item->id }}" 
+                                              rows="2" 
+                                              placeholder="Jelaskan detail kerusakan mesin..." 
+                                              class="w-full p-3 bg-rose-50/50 border border-rose-200 rounded-xl text-xs text-slate-800 placeholder-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500">{{ old("answers.{$item->id}.remarks") }}</textarea>
                                 </div>
-                            </div>
 
-                            <!-- Conditional Remarks Input -->
-                            <div id="remarks-container-{{ $item->id }}" class="hidden space-y-2">
-                                <label for="remarks-{{ $item->id }}" class="block text-xs font-bold uppercase text-rose-700">Catatan Kerusakan / Temuan</label>
-                                <textarea name="answers[{{ $item->id }}][remarks]" 
-                                          id="remarks-{{ $item->id }}" 
-                                          rows="2" 
-                                          placeholder="Jelaskan detail kerusakan mesin..." 
-                                          class="w-full p-3 bg-rose-50/50 border border-rose-200 rounded-xl text-xs text-slate-800 placeholder-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500">{{ old("answers.{$item->id}.remarks") }}</textarea>
                             </div>
-
+                        @endforeach
+                    @else
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 text-center text-slate-500 text-xs">
+                            Rencana PM ini tidak menggunakan paket SOP / checklist tindakan.
                         </div>
-                    @endforeach
+                    @endif
                 </div>
 
                 <!-- Mandatory Photo & Notes -->

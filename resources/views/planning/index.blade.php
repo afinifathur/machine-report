@@ -90,7 +90,7 @@
                 <div class="space-y-1.5 mt-2 bg-white/20 p-3 rounded-lg">
                     @foreach($todayBlocked as $plan)
                         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center text-body-sm">
-                            <span class="font-semibold">{{ $plan->machine->code }} — {{ $plan->maintenanceTemplate->name }}</span>
+                            <span class="font-semibold">{{ $plan->machine->code }} — {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->name : 'Tanpa SOP' }}</span>
                             <span class="text-xs bg-error text-white font-bold px-2 py-0.5 rounded uppercase mt-1 sm:mt-0">
                                 @if(in_array($plan->machine->operational_status, ['breakdown', 'maintenance']))
                                     Mesin Down
@@ -391,7 +391,7 @@
                                 <a 
                                     href="{{ route('planning.show', $p->id) }}" 
                                     class="text-[9px] text-white font-semibold truncate rounded px-1.5 py-0.5 flex items-center justify-between gap-1 shadow-sm transition-all hover:scale-[1.02] {{ $bgColor }}"
-                                    title="{{ $p->machine->code }} - {{ $p->isCorrective() ? $p->breakdown_number : $p->maintenanceTemplate->name }} ({{ $p->readiness['overall_status'] }})"
+                                    title="{{ $p->machine->code }} - {{ $p->isCorrective() ? $p->breakdown_number : ($p->maintenanceTemplate ? $p->maintenanceTemplate->name : 'Tanpa SOP') }} ({{ $p->readiness['overall_status'] }})"
                                 >
                                     <span class="truncate">[{{ $typeBadge }}] {{ $p->machine->code }}</span>
                                     <span class="w-1.5 h-1.5 rounded-full shrink-0 {{ $rdDotColor }}" title="Kesiapan: {{ $p->readiness['overall_status'] }}"></span>

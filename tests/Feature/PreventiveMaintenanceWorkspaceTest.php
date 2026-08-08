@@ -123,6 +123,86 @@ class PreventiveMaintenanceWorkspaceTest extends TestCase
     }
 
     /**
+     * Test PM Plan creation without SOP.
+     */
+    public function test_pm_creation_without_sop(): void
+    {
+        $responsePost = $this->post(route('planning.store'), [
+            'type' => 'preventive',
+            'machine_id' => $this->machine->id,
+            'maintenance_template_id' => null,
+            'scheduled_date' => '2026-08-05',
+            'priority' => 'medium',
+            'notes' => 'Tindakan tanpa SOP',
+            'assigned_technician' => 'R. Miller',
+        ]);
+
+        $responsePost->assertRedirect(route('preventive.index'));
+        $responsePost->assertSessionHas('success');
+
+        $this->assertDatabaseHas('maintenance_plans', [
+            'machine_id' => $this->machine->id,
+            'maintenance_template_id' => null,
+            'type' => MaintenancePlanType::PM->value,
+            'status' => 'assigned',
+            'priority' => 'medium',
+            'notes' => 'Tindakan tanpa SOP',
+            'assigned_technician' => 'R. Miller',
+        ]);
+
+        $plan = MaintenancePlan::where('notes', 'Tindakan tanpa SOP')->first();
+        $this->assertNotNull($plan);
+
+        // Verify readiness report contains N/A for SOP/Checklist/Spareparts
+        $readiness = app(\App\Services\MaintenanceReadinessService::class)->getReadinessReport($plan);
+        $this->assertEquals('N/A', $readiness['template_available']);
+        $this->assertEquals('N/A', $readiness['checklist_available']);
+        $this->assertEquals('N/A', $readiness['spareparts_available']);
+        $this->assertNotEquals('Blocked', $readiness['overall_status']);
+    }
+
+    /**
+     * Test PM Execution and Completion without SOP.
+     */
+    public function test_pm_execution_and_completion_without_sop(): void
+    {
+        $plan = MaintenancePlan::create([
+            'machine_id' => $this->machine->id,
+            'maintenance_template_id' => null,
+            'scheduled_date' => Carbon::parse('2026-08-05'),
+            'priority' => 'high',
+            'status' => 'assigned',
+            'type' => MaintenancePlanType::PM,
+            'generation_source' => 'Manual',
+            'assigned_technician' => 'R. Miller',
+        ]);
+
+        // Get the execution page
+        $response = $this->get(route('planning.execute', $plan->id));
+        $response->assertStatus(200);
+        $response->assertSee('Tanpa SOP');
+
+        // Post execution (submit completion report)
+        $photo = UploadedFile::fake()->image('pm_proof.jpg');
+        $responsePost = $this->post(route('planning.store-execute', $plan->id), [
+            'operator_name' => 'R. Miller',
+            'started_at' => now()->subHours(2)->format('Y-m-d H:i:s'),
+            'photo' => $photo,
+            'notes' => 'Rencana PM tanpa SOP selesai dengan sukses.',
+        ]);
+
+        $responsePost->assertRedirect(route('planning.show', $plan->id));
+        $responsePost->assertSessionHas('success');
+
+        $plan->refresh();
+        $this->assertEquals('completed', $plan->status);
+        $this->assertNotNull($plan->completed_at);
+        $this->assertNotNull($plan->execution);
+        $this->assertEquals('R. Miller', $plan->execution->operator_name);
+        $this->assertEquals(5.0, $plan->execution->overall_score); // Default score when no checklists
+    }
+
+    /**
      * Test assigning technician to PM plan.
      */
     public function test_pm_assignment(): void

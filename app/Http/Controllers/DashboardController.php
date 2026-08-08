@@ -154,7 +154,7 @@ class DashboardController extends Controller
                     'type' => 'Technician',
                     'reason' => $plan->isCorrective() 
                         ? "Teknisi pelaksana belum ditunjuk untuk perbaikan kerusakan {$plan->breakdown_number}." 
-                        : "Teknisi pelaksana belum ditunjuk untuk PM {$plan->maintenanceTemplate->name}.",
+                        : "Teknisi pelaksana belum ditunjuk untuk PM " . ($plan->maintenanceTemplate->name ?? 'tanpa SOP') . ".",
                     'machine_code' => $machine->code,
                     'machine_name' => $machine->name,
                     'plan_id' => $plan->id,
@@ -269,7 +269,7 @@ class DashboardController extends Controller
                     : "PM {$exec->plan->machine->code} Dimulai",
                 'details' => $isCorrective 
                     ? "Teknisi: {$exec->operator_name} (No. Breakdown: {$exec->plan->breakdown_number})"
-                    : "Teknisi: {$exec->operator_name} (SOP: {$exec->plan->maintenanceTemplate->name})",
+                    : "Teknisi: {$exec->operator_name} (SOP: " . ($exec->plan->maintenanceTemplate->name ?? 'tanpa SOP') . ")",
                 'type' => 'started',
                 'color' => 'amber'
             ];

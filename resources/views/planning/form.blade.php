@@ -166,8 +166,8 @@
                     <div class="space-y-1.5">
                         <label for="maintenance_template_id" class="block text-xs font-bold uppercase text-slate-400">Paket Perawatan (SOP)</label>
                         <div class="relative">
-                            <select name="maintenance_template_id" id="maintenance_template_id" required class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
-                                <option value="">-- Pilih SOP Perawatan --</option>
+                            <select name="maintenance_template_id" id="maintenance_template_id" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none">
+                                <option value="">-- Pilih SOP Perawatan (Opsional) --</option>
                                 @foreach ($templates as $tpl)
                                     <option value="{{ $tpl->id }}" {{ old('maintenance_template_id') == $tpl->id ? 'selected' : '' }}>{{ $tpl->name }} ({{ $tpl->machine_category }})</option>
                                 @endforeach
@@ -176,6 +176,7 @@
                                 <span class="material-symbols-outlined">expand_more</span>
                             </div>
                         </div>
+                        <span class="text-[10px] text-slate-400 block leading-normal mt-0.5">SOP dapat ditambahkan nanti. Untuk saat ini rencana PM tetap dapat dibuat tanpa paket SOP.</span>
                     </div>
 
                     <!-- Scheduled Date (Preventive only) -->

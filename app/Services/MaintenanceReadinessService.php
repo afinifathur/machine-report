@@ -62,17 +62,19 @@ class MaintenanceReadinessService
         } : 'Tidak Ditemukan';
 
         // 2. Template Available (PM only, always true for corrective)
-        $templateAvailable = $plan->isCorrective() ? true : ($template && $template->is_active);
+        $templateAvailable = $plan->isCorrective() ? true : (is_null($plan->maintenance_template_id) ? 'N/A' : ($template && $template->is_active));
 
         // 3. Checklist Available (PM only, always true for corrective)
-        $checklistAvailable = $plan->isCorrective() ? true : ($template && $template->checklists->count() > 0);
+        $checklistAvailable = $plan->isCorrective() ? true : (is_null($plan->maintenance_template_id) ? 'N/A' : ($template && $template->checklists->count() > 0));
 
         // 4. Required Spareparts Available (Mandatory SOP - PM only)
         $sparepartsAvailable = true;
         $sparepartDetails = [];
         $insufficientParts = [];
 
-        if ($template) {
+        if (is_null($plan->maintenance_template_id)) {
+            $sparepartsAvailable = 'N/A';
+        } elseif ($template) {
             foreach ($template->spareparts as $reqPart) {
                 $wmsDetails = $this->warehouseRepository->getItemDetails($reqPart->warehouse_item_code);
                 $isSufficient = $wmsDetails['stock'] >= $reqPart->quantity;
@@ -148,9 +150,9 @@ class MaintenanceReadinessService
         // 8. Determine Overall Readiness Status
         // Blocked only if machine is down or template is inactive/missing
         // Spareparts shortages are treated as warnings to provide visibility without blocking execution or demoting status
-        if (!$templateAvailable || !$machineReady) {
+        if ($templateAvailable === false || !$machineReady) {
             $overallStatus = 'Blocked'; // Terblokir
-        } elseif ($checklistAvailable && $documentsAvailable && $technicianAssigned) {
+        } elseif (($checklistAvailable === true || $checklistAvailable === 'N/A') && $documentsAvailable && $technicianAssigned) {
             $overallStatus = 'Ready'; // Siap
         } else {
             $overallStatus = 'Almost Ready'; // Hampir Siap
@@ -163,7 +165,7 @@ class MaintenanceReadinessService
         if (!$machineReady) {
             $blockers[] = "Mesin {$machine->code} sedang dalam kondisi " . strtolower($machineStatusText) . ".";
         }
-        if (!$templateAvailable) {
+        if ($templateAvailable === false) {
             $blockers[] = "Paket Perawatan (SOP) tidak aktif atau tidak ditemukan.";
         }
 
@@ -175,7 +177,7 @@ class MaintenanceReadinessService
             $warnings[] = "Beberapa suku cadang mesin yang terpetakan berada dalam kondisi kritis atau perlu reorder.";
         }
 
-        if ($templateAvailable && !$checklistAvailable) {
+        if ($templateAvailable === true && !$checklistAvailable) {
             $warnings[] = "Daftar tugas (checklist) tindakan belum diatur pada paket perawatan.";
         }
         if (!$documentsAvailable) {

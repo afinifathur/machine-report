@@ -124,7 +124,7 @@
                     @if($plan->isCorrective())
                         Kerusakan Mesin: {{ $plan->breakdown_number }}
                     @else
-                        Paket Perawatan: {{ $plan->maintenanceTemplate->name }}
+                        Paket Perawatan: {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->name : 'Tanpa SOP (Perencanaan Umum)' }}
                     @endif
                 </h1>
                 <p class="text-body-md text-on-surface-variant mt-1">
@@ -140,7 +140,7 @@
                     Prioritas: {{ $priorityLabel }}
                 </span>
                 <span class="px-3 py-1 rounded-full text-label-sm font-bold uppercase bg-surface-container text-on-surface-variant">
-                    Siklus: {{ $plan->isCorrective() ? 'Corrective' : $plan->maintenanceTemplate->maintenance_type }}
+                    Siklus: {{ $plan->isCorrective() ? 'Corrective' : ($plan->maintenanceTemplate ? $plan->maintenanceTemplate->maintenance_type : 'Preventive') }}
                 </span>
             </div>
         </div>
@@ -158,7 +158,7 @@
                     @if($plan->isCorrective())
                         {{ $plan->downtime_duration ?? '-' }} Menit (Downtime)
                     @else
-                        {{ $plan->maintenanceTemplate->estimated_duration }} Menit
+                        {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->estimated_duration : 120 }} Menit
                     @endif
                 </span>
             </div>
@@ -389,28 +389,32 @@
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-headline-sm text-headline-sm text-on-surface">Daftar Checklist Tindakan</h3>
                 <span class="px-2.5 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary">
-                    {{ $plan->maintenanceTemplate->checklists->count() }} Tugas
+                    {{ $plan->maintenanceTemplate ? $plan->maintenanceTemplate->checklists->count() : 0 }} Tugas
                 </span>
             </div>
             <p class="text-body-sm text-on-surface-variant mb-4">Checklist ini didefinisikan dalam Paket Perawatan standar dan tidak dapat diubah di tingkat rencana.</p>
 
             <div class="space-y-4">
-                @forelse($plan->maintenanceTemplate->checklists as $chk)
-                    <div class="p-3 bg-surface-container-low border border-outline-variant rounded-lg flex items-start gap-3">
-                        <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">task_alt</span>
-                        <div>
-                            <h4 class="font-body-md text-body-md font-semibold text-on-surface">{{ $chk->title }}</h4>
-                            @if($chk->description)
-                                <p class="text-body-sm text-on-surface-variant mt-0.5">{{ $chk->description }}</p>
-                            @endif
-                            <span class="inline-block mt-2 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded {{ $chk->is_required ? 'bg-red-50 text-error' : 'bg-surface-container text-on-surface-variant' }}">
-                                {{ $chk->is_required ? 'Wajib' : 'Opsional' }}
-                            </span>
+                @if($plan->maintenanceTemplate)
+                    @forelse($plan->maintenanceTemplate->checklists as $chk)
+                        <div class="p-3 bg-surface-container-low border border-outline-variant rounded-lg flex items-start gap-3">
+                            <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">task_alt</span>
+                            <div>
+                                <h4 class="font-body-md text-body-md font-semibold text-on-surface">{{ $chk->title }}</h4>
+                                @if($chk->description)
+                                    <p class="text-body-sm text-on-surface-variant mt-0.5">{{ $chk->description }}</p>
+                                @endif
+                                <span class="inline-block mt-2 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded {{ $chk->is_required ? 'bg-red-50 text-error' : 'bg-surface-container text-on-surface-variant' }}">
+                                    {{ $chk->is_required ? 'Wajib' : 'Opsional' }}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                @empty
-                    <p class="text-body-md text-on-surface-variant italic">Belum ada tugas checklist diatur dalam Paket Perawatan.</p>
-                @endforelse
+                    @empty
+                        <p class="text-body-md text-on-surface-variant italic">Belum ada tugas checklist diatur dalam Paket Perawatan.</p>
+                    @endforelse
+                @else
+                    <p class="text-body-md text-on-surface-variant italic text-center py-4">Rencana PM ini tidak menggunakan paket SOP / checklist.</p>
+                @endif
             </div>
         </div>
 
@@ -418,8 +422,8 @@
         <div class="lg:col-span-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-headline-sm text-headline-sm text-on-surface">Ketersediaan Suku Cadang (WMS)</h3>
-                <span class="px-2.5 py-0.5 rounded text-xs font-bold {{ $report['spareparts_available'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                    {{ $report['spareparts_available'] ? 'Lengkap' : 'Ada Kurang' }}
+                <span class="px-2.5 py-0.5 rounded text-xs font-bold {{ $report['spareparts_available'] === 'N/A' ? 'bg-slate-100 text-slate-800' : ($report['spareparts_available'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800') }}">
+                    {{ $report['spareparts_available'] === 'N/A' ? 'N/A (Tanpa SOP)' : ($report['spareparts_available'] ? 'Lengkap' : 'Ada Kurang') }}
                 </span>
             </div>
             <p class="text-body-sm text-on-surface-variant mb-4">Suku cadang dicocokkan secara realtime dari data Warehouse Management System (WMS).</p>
