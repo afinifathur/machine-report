@@ -107,6 +107,42 @@ class RBACFeatureTest extends TestCase
         // Can access administration panel (due to employee.view) and manage users
         $this->get(route('admin.index'))->assertStatus(200);
         $this->post(route('admin.users.store'), [])->assertStatus(302);
+
+        // Can create employees
+        $department = \App\Models\MasterDepartment::firstOrCreate(
+            ['code' => 'MAINTENANCE'],
+            ['name' => 'Maintenance', 'sort_order' => 20]
+        );
+        $position = \App\Models\MasterPosition::firstOrCreate(
+            ['code' => 'OPERATOR'],
+            ['name' => 'Operator / Mekanik', 'sort_order' => 60]
+        );
+
+        $responseStore = $this->post(route('admin.employees.store'), [
+            'employee_number' => '8888',
+            'full_name' => 'Test Employee',
+            'department_id' => $department->id,
+            'position_id' => $position->id,
+            'employment_status' => 'ACTIVE',
+            'employment_start_date' => '2026-01-01',
+            'is_assignable' => '1',
+        ]);
+        $responseStore->assertRedirect(route('admin.index'));
+        
+        $employee = \App\Models\Employee::where('employee_number', '8888')->firstOrFail();
+
+        // Can edit/deactivate employees
+        $responseUpdate = $this->put(route('admin.employees.update', $employee->id), [
+            'employee_number' => '8888',
+            'full_name' => 'Test Employee Updated',
+            'department_id' => $department->id,
+            'position_id' => $position->id,
+            'employment_status' => 'RESIGNED',
+            'employment_start_date' => '2026-01-01',
+            'is_assignable' => '0',
+        ]);
+        $responseUpdate->assertRedirect(route('admin.index'));
+        $this->assertEquals('RESIGNED', $employee->fresh()->employment_status->value);
     }
 
     /**

@@ -150,6 +150,7 @@ class PermissionSeeder extends Seeder
                 'preventive.create',
                 'preventive.execute',
                 'employee.view',
+                'employee.manage',
                 'sparepart.view',
                 'procurement.view',
                 'procurement.create',
