@@ -100,6 +100,12 @@
                         <p class="font-semibold text-lg mt-0.5 text-primary">{{ $procurement->item_name }}</p>
                     </div>
                     <div>
+                        <p class="text-xs text-on-surface-variant font-medium">Jumlah Dibutuhkan</p>
+                        <p class="font-semibold text-lg mt-0.5">
+                            {{ $procurement->quantity_required ? $procurement->quantity_required . ' Unit' : '-' }}
+                        </p>
+                    </div>
+                    <div>
                         <p class="text-xs text-on-surface-variant font-medium">Kategori</p>
                         <p class="font-semibold text-lg mt-0.5">{{ $procurement->category->name ?? '-' }}</p>
                     </div>

@@ -66,6 +66,7 @@ class ProcurementExtraTest extends TestCase
         $payload = [
             'machine_id' => $this->machine->id,
             'item_name' => 'Gearbox Reducer Test',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'normal',
             'target_needed_date' => now()->addDays(7)->toDateString(),
@@ -116,6 +117,7 @@ class ProcurementExtraTest extends TestCase
         $payload = [
             'machine_id' => $this->machine->id,
             'item_name' => 'Current Month Item',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'normal',
             'target_needed_date' => now()->addDays(7)->toDateString(),
@@ -160,6 +162,7 @@ class ProcurementExtraTest extends TestCase
         $payload = [
             'machine_id' => $this->machine->id,
             'item_name' => 'Updated Item Name',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'urgent',
             'target_needed_date' => now()->addDays(10)->toDateString(),
@@ -320,6 +323,7 @@ class ProcurementExtraTest extends TestCase
         $payload = [
             'machine_id' => $this->machine->id,
             'item_name' => 'New Name',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'normal',
             'target_needed_date' => now()->addDays(7)->toDateString(),
@@ -349,6 +353,7 @@ class ProcurementExtraTest extends TestCase
         $payload = [
             'machine_id' => $this->machine->id,
             'item_name' => 'Draft Created Item',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'urgent',
             'target_needed_date' => now()->addDays(7)->toDateString(),
@@ -425,6 +430,7 @@ class ProcurementExtraTest extends TestCase
         $response2 = $this->put(route('procurements.update', $case->id), [
             'machine_id' => $this->machine->id,
             'item_name' => 'Hacked Name',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'urgent',
             'target_needed_date' => now()->addDays(5)->toDateString(),

@@ -207,7 +207,7 @@
         </tr>
         <tr>
             <td class="bg-gray"><span class="summary-label">Procurement Type</span></td>
-            <td colspan="3">
+            <td style="width: 30%;">
                 <span class="summary-value font-mono" style="font-weight: bold;">
                     @if($case->sourcing_type === 'import')
                         IMPORT
@@ -216,6 +216,12 @@
                     @else
                         -
                     @endif
+                </span>
+            </td>
+            <td class="bg-gray" style="width: 20%;"><span class="summary-label">Quantity Required</span></td>
+            <td style="width: 30%;">
+                <span class="summary-value font-mono" style="font-weight: bold;">
+                    {{ $case->quantity_required ? $case->quantity_required . ' Unit' : '-' }}
                 </span>
             </td>
         </tr>

@@ -387,7 +387,12 @@
                         @foreach($cases as $case)
                             <tr class="hover:bg-surface-bright text-body-md text-sm text-on-surface">
                                 <td class="px-6 py-4 font-semibold mono text-primary">{{ $case->case_number }}</td>
-                                <td class="px-6 py-4 font-medium max-w-xs break-words leading-relaxed">{{ $case->item_name }}</td>
+                                <td class="px-6 py-4 font-medium max-w-xs break-words leading-relaxed">
+                                    {{ $case->item_name }}
+                                    @if($case->quantity_required)
+                                        <span class="text-xs font-normal text-on-surface-variant">({{ $case->quantity_required }} Unit)</span>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4">
                                     <div class="font-medium">{{ $case->machine->name }}</div>
                                     <div class="text-xs opacity-70 mono">{{ $case->machine->code }}</div>
@@ -506,7 +511,12 @@
                     {{-- Card Body --}}
                     <div class="px-4 pb-4 space-y-3">
                         {{-- Item Name --}}
-                        <p class="font-semibold text-on-surface text-base leading-snug">{{ $case->item_name }}</p>
+                        <p class="font-semibold text-on-surface text-base leading-snug">
+                            {{ $case->item_name }}
+                            @if($case->quantity_required)
+                                <span class="text-xs font-normal text-on-surface-variant">({{ $case->quantity_required }} Unit)</span>
+                            @endif
+                        </p>
 
                         {{-- Machine --}}
                         <div class="flex items-center gap-2 text-sm text-on-surface-variant">

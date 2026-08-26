@@ -154,6 +154,7 @@ class PermissionSeeder extends Seeder
                 'procurement.view',
                 'procurement.create',
                 'procurement.pickup',
+                'admin.manage.users',
             ],
             'Maintenance Technician' => [
                 'machine.view',

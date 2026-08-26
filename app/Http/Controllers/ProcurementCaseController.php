@@ -184,6 +184,7 @@ class ProcurementCaseController extends Controller
         $validated = $request->validate([
             'machine_id'                => 'required|exists:machines,id',
             'item_name'                 => 'required|string|max:255',
+            'quantity_required'         => 'required|integer|min:1',
             'procurement_category_id'   => 'required|exists:procurement_categories,id',
             'urgency'                   => 'required|string|in:normal,urgent,emergency',
             'target_needed_date'        => 'required|date',
@@ -274,6 +275,7 @@ class ProcurementCaseController extends Controller
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'item_name' => 'required|string|max:255',
+            'quantity_required' => 'required|integer|min:1',
             'procurement_category_id' => 'required|exists:procurement_categories,id',
             'urgency' => 'required|string|in:normal,urgent,emergency',
             'target_needed_date' => 'required|date',
@@ -404,6 +406,7 @@ class ProcurementCaseController extends Controller
         $validated = $request->validate([
             'machine_id' => 'required|exists:machines,id',
             'item_name' => 'required|string|max:255',
+            'quantity_required' => 'required|integer|min:1',
             'procurement_category_id' => 'required|exists:procurement_categories,id',
             'urgency' => 'required|string|in:normal,urgent,emergency',
             'target_needed_date' => 'required|date',

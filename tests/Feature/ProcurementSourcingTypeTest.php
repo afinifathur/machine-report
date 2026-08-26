@@ -55,6 +55,7 @@ class ProcurementSourcingTypeTest extends TestCase
         $response = $this->post(route('procurements.store'), [
             'machine_id' => $this->machine->id,
             'item_name' => 'Local Component A',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'normal',
             'target_needed_date' => now()->addDays(5)->toDateString(),
@@ -76,6 +77,7 @@ class ProcurementSourcingTypeTest extends TestCase
         $response = $this->post(route('procurements.store'), [
             'machine_id' => $this->machine->id,
             'item_name' => 'Import Component B',
+            'quantity_required' => 1,
             'procurement_category_id' => $this->category->id,
             'urgency' => 'normal',
             'target_needed_date' => now()->addDays(5)->toDateString(),

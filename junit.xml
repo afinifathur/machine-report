@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="C:\laragon\www\Machine-Report\phpunit.xml" tests="1" assertions="4" errors="1" failures="0" skipped="0" time="0.839203">
+    <testsuite name="Feature" tests="1" assertions="4" errors="1" failures="0" skipped="0" time="0.839203">
+      <testsuite name="Tests\Feature\RBACFeatureTest" file="C:\laragon\www\Machine-Report\tests\Feature\RBACFeatureTest.php" tests="1" assertions="4" errors="1" failures="0" skipped="0" time="0.839203">
+        <testcase name="test_maintenance_administrator_permissions" file="C:\laragon\www\Machine-Report\tests\Feature\RBACFeatureTest.php" line="96" class="Tests\Feature\RBACFeatureTest" classname="Tests.Feature.RBACFeatureTest" assertions="4" time="0.839203">
+          <error type="Error">Tests\Feature\RBACFeatureTest::test_maintenance_administrator_permissions&#13;
+Error: Call to a member function all() on array
+&#13;
+C:\laragon\www\Machine-Report\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:81
+C:\laragon\www\Machine-Report\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:47
+C:\laragon\www\Machine-Report\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:176
+C:\laragon\www\Machine-Report\tests\Feature\RBACFeatureTest.php:109</error>
+        </testcase>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -41,6 +41,19 @@
                            placeholder="Contoh: Reducer WPA 80 Ratio 1:30, Motor Servo Yaskawa 400W..."/>
                 </div>
 
+                <!-- Jumlah Dibutuhkan -->
+                <div class="col-span-2">
+                    <label for="quantity_required" class="block text-label-md font-label-md text-on-surface font-semibold mb-2">
+                        Jumlah Dibutuhkan <span class="text-error">*</span>
+                    </label>
+                    <div class="relative max-w-xs flex items-center">
+                        <input type="number" name="quantity_required" id="quantity_required" value="{{ old('quantity_required', $procurement->quantity_required) }}" required min="1" step="1"
+                               class="w-full pl-4 pr-16 py-2.5 bg-surface-container border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary font-body-md text-sm" 
+                               placeholder="Contoh: 1"/>
+                        <span class="absolute right-4 text-sm font-semibold text-on-surface-variant">Unit</span>
+                    </div>
+                </div>
+
                 <!-- Machine Selection -->
                 <div>
                     <label for="machine_id" class="block text-label-md font-label-md text-on-surface font-semibold mb-2">

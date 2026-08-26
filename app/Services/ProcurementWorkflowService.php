@@ -47,6 +47,7 @@ class ProcurementWorkflowService
             'machine_down' => filter_var($data['machine_down'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'sourcing_type' => $data['sourcing_type'] ?? null,
             'created_by' => $creator->id,
+            'quantity_required' => $data['quantity_required'],
         ]);
     }
 
@@ -69,6 +70,7 @@ class ProcurementWorkflowService
             'target_needed_date' => $data['target_needed_date'],
             'machine_down' => isset($data['machine_down']) ? filter_var($data['machine_down'], FILTER_VALIDATE_BOOLEAN) : $case->machine_down,
             'sourcing_type' => $data['sourcing_type'] ?? $case->sourcing_type,
+            'quantity_required' => $data['quantity_required'] ?? $case->quantity_required,
         ]);
 
         return $case;
@@ -214,6 +216,7 @@ class ProcurementWorkflowService
             'machine_down' => isset($data['machine_down']) ? filter_var($data['machine_down'], FILTER_VALIDATE_BOOLEAN) : $case->machine_down,
             'status' => ProcurementStatus::PENDING_KABAG,
             'current_owner' => 'Kabag Maintenance',
+            'quantity_required' => $data['quantity_required'] ?? $case->quantity_required,
         ]);
 
         return $case;

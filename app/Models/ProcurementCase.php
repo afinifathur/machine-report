@@ -19,6 +19,7 @@ class ProcurementCase extends Model
         'machine_id',
         'procurement_category_id',
         'item_name',
+        'quantity_required',
         'urgency',
         'status',
         'current_owner',

@@ -104,9 +104,9 @@ class RBACFeatureTest extends TestCase
         $this->get(route('machines.index'))->assertStatus(200);
         $this->get(route('machines.create'))->assertStatus(200);
 
-        // Can access administration panel (due to employee.view)
+        // Can access administration panel (due to employee.view) and manage users
         $this->get(route('admin.index'))->assertStatus(200);
-        $this->post(route('admin.users.store'), [])->assertStatus(403);
+        $this->post(route('admin.users.store'), [])->assertStatus(302);
     }
 
     /**

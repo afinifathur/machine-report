@@ -170,6 +170,7 @@ class ProcurementWorkflowTest extends TestCase
         $response = $this->put(route('procurements.update', $case->id), [
             'machine_id' => $this->machine->id,
             'item_name' => 'WPA 80 Reducer (Revised Name)',
+            'quantity_required' => 1,
             'procurement_category_id' => $category->id,
             'urgency' => 'urgent',
             'target_needed_date' => now()->addDays(3)->toDateString(),
