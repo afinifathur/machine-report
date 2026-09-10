@@ -1,85 +1,3 @@
-@php
-    $tab = request('tab', 'active');
-    
-    $tabQuery = \App\Models\ProcurementCase::with(['machine', 'creator', 'category']);
-
-    // Duplicate search and filter logic from controller
-    if (request()->filled('search')) {
-        $search = request('search');
-        $tabQuery->where(function ($q) use ($search) {
-            $q->where('case_number', 'like', "%{$search}%")
-              ->orWhere('item_name', 'like', "%{$search}%")
-              ->orWhere('current_owner', 'like', "%{$search}%")
-              ->orWhere('reason', 'like', "%{$search}%")
-              ->orWhereHas('machine', function ($mq) use ($search) {
-                  $mq->where('name', 'like', "%{$search}%");
-              })
-              ->orWhereHas('category', function ($cq) use ($search) {
-                  $cq->where('name', 'like', "%{$search}%");
-              });
-        });
-    }
-
-    if (request()->filled('status')) {
-        $tabQuery->where('status', request('status'));
-    }
-
-    if (request()->filled('status_group')) {
-        $group = request('status_group');
-        if ($group === 'draft') {
-            $tabQuery->where('status', \App\Enums\ProcurementStatus::DRAFT);
-        } elseif ($group === 'pending_approval') {
-            $tabQuery->whereIn('status', [
-                \App\Enums\ProcurementStatus::PENDING_KABAG,
-                \App\Enums\ProcurementStatus::PENDING_DIR,
-                \App\Enums\ProcurementStatus::NEED_INFO
-            ]);
-        } elseif ($group === 'processing') {
-            $tabQuery->whereIn('status', [
-                \App\Enums\ProcurementStatus::PROCESSING,
-                \App\Enums\ProcurementStatus::WAITING_DELIVERY
-            ]);
-        } elseif ($group === 'ready_pickup') {
-            $tabQuery->where('status', \App\Enums\ProcurementStatus::READY_TO_PICKUP);
-        } elseif ($group === 'closed') {
-            $tabQuery->where('status', \App\Enums\ProcurementStatus::CLOSED);
-        }
-    }
-
-    if (request()->filled('urgency')) {
-        $tabQuery->where('urgency', request('urgency'));
-    }
-
-    if (request()->filled('category')) {
-        $tabQuery->where('procurement_category_id', request('category'));
-    }
-
-    if (request()->filled('owner')) {
-        $tabQuery->where('current_owner', request('owner'));
-    }
-
-    if (request()->boolean('my_cases')) {
-        $user = auth()->user();
-        if ($user) {
-            $userRoles = $user->roles->pluck('name')->toArray();
-            $tabQuery->whereIn('current_owner', $userRoles);
-        }
-    }
-
-    // Tab counts
-    $activeCountQuery = (clone $tabQuery)->whereNotIn('status', [\App\Enums\ProcurementStatus::CLOSED, \App\Enums\ProcurementStatus::CANCELLED]);
-    $closedCountQuery = (clone $tabQuery)->whereIn('status', [\App\Enums\ProcurementStatus::CLOSED, \App\Enums\ProcurementStatus::CANCELLED]);
-    
-    $activeCount = $activeCountQuery->count();
-    $closedCount = $closedCountQuery->count();
-
-    if ($tab === 'closed') {
-        $cases = $closedCountQuery->latest()->paginate(10)->withQueryString();
-    } else {
-        $cases = $activeCountQuery->latest()->paginate(20)->withQueryString();
-    }
-@endphp
-
 <x-layouts.app 
     title="Daftar Pengadaan Khusus | Sistem MRM"
     topbar-title="Pengadaan Khusus"
@@ -204,50 +122,98 @@
     </div>
 
     <!-- ================================================================
-         SEARCH & FILTER
-         Desktop: always visible grid
-         Mobile:  search always on top, filters collapse via toggle
+         TAB BAR + INLINE SEARCH (SAME ROW)
     ================================================================ -->
-    <div class="bg-surface-container-lowest border border-outline-variant rounded-xl mb-4 md:mb-6 shadow-sm overflow-hidden">
-        <form action="{{ route('procurements.index') }}" method="GET" id="filter-form">
-            @if(request('status_group'))
-                <input type="hidden" name="status_group" value="{{ request('status_group') }}">
-            @endif
-            @if(request('tab'))
-                <input type="hidden" name="tab" value="{{ request('tab') }}">
-            @endif
-
-            {{-- ── Search row (always visible on all sizes) ──}}
-            <div class="p-4 md:p-5 pb-0 md:pb-0">
-                <label for="search" class="block text-xs font-semibold text-on-surface mb-1">Cari Kata Kunci</label>
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant opacity-60">search</span>
-                        <input type="text" name="search" id="search" value="{{ request('search') }}" 
-                               placeholder="No Case, Nama Barang, Mesin..." 
-                               class="w-full pl-10 pr-4 py-2 bg-surface-container border border-outline-variant rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"/>
-                    </div>
-                    {{-- Mobile: toggle filter button --}}
-                    <button type="button" id="filter-toggle-btn"
-                            class="md:hidden flex items-center gap-1.5 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface bg-surface-container hover:bg-surface-container-high transition-colors shrink-0">
-                        <span class="material-symbols-outlined text-[18px]">tune</span>
-                        Filter
-                        <span id="filter-arrow" class="material-symbols-outlined text-[16px] transition-transform duration-200">expand_more</span>
-                    </button>
-                </div>
+    <div class="mb-4 md:mb-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-3 md:p-4 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            
+            <!-- Left: Tab Buttons -->
+            <div class="flex items-center gap-2">
+                <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'active', 'status_group' => ''])) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-2 {{ $tab !== 'closed' ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high' }}">
+                    <span>Aktif</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $tab !== 'closed' ? 'bg-white/20 text-white' : 'bg-surface-container-highest text-on-surface' }}">
+                        {{ $activeCount }}
+                    </span>
+                </a>
+                <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'closed', 'status_group' => ''])) }}" 
+                   class="px-4 py-2 rounded-lg font-semibold text-xs md:text-sm transition-all flex items-center gap-2 {{ $tab === 'closed' ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high' }}">
+                    <span>Selesai</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {{ $tab === 'closed' ? 'bg-white/20 text-white' : 'bg-surface-container-highest text-on-surface' }}">
+                        {{ $totalClosedCount }}
+                    </span>
+                </a>
             </div>
 
-            {{-- ── Filter fields (hidden on mobile by default, always shown on desktop) ──}}
-            <div id="filter-fields" style="display:none">
-                <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 md:p-5 pt-4">
+            <!-- Right: Inline Search Form + Filter Toggle -->
+            <form action="{{ route('procurements.index') }}" method="GET" class="flex items-center gap-2 w-full md:w-auto">
+                <input type="hidden" name="tab" value="{{ $tab }}">
+                @if(request('status_group'))
+                    <input type="hidden" name="status_group" value="{{ request('status_group') }}">
+                @endif
+                @if(request('status'))
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                @endif
+                @if(request('urgency'))
+                    <input type="hidden" name="urgency" value="{{ request('urgency') }}">
+                @endif
+                @if(request('category'))
+                    <input type="hidden" name="category" value="{{ request('category') }}">
+                @endif
+                @if(request('owner'))
+                    <input type="hidden" name="owner" value="{{ request('owner') }}">
+                @endif
+                @if(request('my_cases'))
+                    <input type="hidden" name="my_cases" value="{{ request('my_cases') }}">
+                @endif
+
+                <div class="relative flex-1 md:w-72">
+                    <span class="material-symbols-outlined absolute left-2.5 top-2 text-on-surface-variant opacity-60 text-[18px]">search</span>
+                    <input type="text" name="search" id="search" value="{{ request('search') }}" 
+                           placeholder="Cari nama barang..." 
+                           class="w-full pl-8 pr-8 py-1.5 bg-surface-container border border-outline-variant rounded-lg text-xs md:text-sm text-on-surface focus:ring-2 focus:ring-primary focus:outline-none"/>
+                    @if(request()->filled('search'))
+                        <a href="{{ route('procurements.index', array_merge(request()->except(['search', 'page']), ['tab' => $tab])) }}" 
+                           title="Hapus pencarian"
+                           class="absolute right-2.5 top-2 text-on-surface-variant hover:text-error transition-colors flex items-center">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </a>
+                    @endif
+                </div>
+
+                <button type="submit" class="bg-primary hover:bg-primary-container text-on-primary px-3.5 py-1.5 rounded-lg font-semibold text-xs transition-colors shadow-sm shrink-0">
+                    Cari
+                </button>
+
+                <button type="button" id="filter-toggle-btn"
+                        class="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface bg-surface-container hover:bg-surface-container-high transition-colors shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">tune</span>
+                    <span class="hidden sm:inline">Filter</span>
+                    <span id="filter-arrow" class="material-symbols-outlined text-[16px] transition-transform duration-200">expand_more</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Collapsible Advanced Filters Section -->
+        <div id="filter-fields" style="display:none" class="mt-3 pt-3 border-t border-outline-variant/60">
+            <form action="{{ route('procurements.index') }}" method="GET" id="advanced-filter-form">
+                <input type="hidden" name="tab" value="{{ $tab }}">
+                @if(request('search'))
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                @endif
+                @if(request('status_group'))
+                    <input type="hidden" name="status_group" value="{{ request('status_group') }}">
+                @endif
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                     <!-- Status Filter -->
                     <div>
-                        <label for="status" class="block text-xs font-semibold text-on-surface mb-1">Status</label>
-                        <select name="status" id="status" class="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-lg text-sm">
+                        <label for="status" class="block font-semibold text-on-surface mb-1">Status</label>
+                        <select name="status" id="status" class="w-full px-2.5 py-1.5 bg-surface-container border border-outline-variant rounded-lg text-xs">
                             <option value="">-- Semua Status --</option>
-                            @foreach(\App\Enums\ProcurementStatus::cases() as $status)
-                                <option value="{{ $status->value }}" {{ request('status') === $status->value ? 'selected' : '' }}>
-                                    {{ str_replace('_', ' ', strtoupper($status->value)) }}
+                            @foreach(\App\Enums\ProcurementStatus::cases() as $st)
+                                <option value="{{ $st->value }}" {{ request('status') === $st->value ? 'selected' : '' }}>
+                                    {{ str_replace('_', ' ', strtoupper($st->value)) }}
                                 </option>
                             @endforeach
                         </select>
@@ -255,8 +221,8 @@
 
                     <!-- Urgensi Filter -->
                     <div>
-                        <label for="urgency" class="block text-xs font-semibold text-on-surface mb-1">Urgensi</label>
-                        <select name="urgency" id="urgency" class="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-lg text-sm">
+                        <label for="urgency" class="block font-semibold text-on-surface mb-1">Urgensi</label>
+                        <select name="urgency" id="urgency" class="w-full px-2.5 py-1.5 bg-surface-container border border-outline-variant rounded-lg text-xs">
                             <option value="">-- Semua Urgensi --</option>
                             @foreach(\App\Enums\ProcurementUrgency::cases() as $urg)
                                 <option value="{{ $urg->value }}" {{ request('urgency') === $urg->value ? 'selected' : '' }}>
@@ -268,8 +234,8 @@
 
                     <!-- Kategori Filter -->
                     <div>
-                        <label for="category" class="block text-xs font-semibold text-on-surface mb-1">Kategori</label>
-                        <select name="category" id="category" class="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-lg text-sm">
+                        <label for="category" class="block font-semibold text-on-surface mb-1">Kategori</label>
+                        <select name="category" id="category" class="w-full px-2.5 py-1.5 bg-surface-container border border-outline-variant rounded-lg text-xs">
                             <option value="">-- Semua Kategori --</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>
@@ -281,8 +247,8 @@
 
                     <!-- Owner Filter -->
                     <div>
-                        <label for="owner" class="block text-xs font-semibold text-on-surface mb-1">Current Owner</label>
-                        <select name="owner" id="owner" class="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-lg text-sm">
+                        <label for="owner" class="block font-semibold text-on-surface mb-1">Current Owner</label>
+                        <select name="owner" id="owner" class="w-full px-2.5 py-1.5 bg-surface-container border border-outline-variant rounded-lg text-xs">
                             <option value="">-- Semua Owner --</option>
                             @foreach($owners as $ownerName)
                                 @if(!empty($ownerName))
@@ -295,80 +261,77 @@
                     </div>
 
                     <!-- My Cases Checkbox -->
-                    <div class="flex items-center gap-2 md:pt-6">
+                    <div class="flex items-center gap-2 pt-4 sm:pt-6">
                         <input type="checkbox" name="my_cases" id="my_cases" value="1" {{ request('my_cases') == '1' ? 'checked' : '' }}
                                class="w-4 h-4 text-primary bg-surface-container border border-outline-variant rounded focus:ring-primary"/>
-                        <label for="my_cases" class="text-sm font-semibold text-on-surface cursor-pointer select-none">Tugasku Saja</label>
-                    </div>
-
-                    <!-- Action buttons -->
-                    <div class="col-span-1 md:col-span-2 lg:col-span-5 flex justify-end gap-2">
-                        <a href="{{ route('procurements.index') }}" class="px-4 py-2 border border-outline text-secondary hover:bg-surface-container rounded-lg font-semibold text-sm transition-colors flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[18px]">restart_alt</span>
-                            Reset
-                        </a>
-                        <button type="submit" class="bg-primary hover:bg-primary-container text-on-primary px-5 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-1 shadow-sm">
-                            <span class="material-symbols-outlined text-[18px]">filter_alt</span>
-                            Terapkan
-                        </button>
+                        <label for="my_cases" class="text-xs font-semibold text-on-surface cursor-pointer select-none">Tugasku Saja</label>
                     </div>
                 </div>
-            </div>
 
-            {{-- Mobile: search submit button when filters are hidden --}}
-            <div class="md:hidden p-4 pt-3 flex justify-end gap-2">
-                <a href="{{ route('procurements.index') }}" class="px-3 py-2 border border-outline text-secondary hover:bg-surface-container rounded-lg font-semibold text-sm transition-colors flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[16px]">restart_alt</span>
-                    Reset
-                </a>
-                <button type="submit" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-1 shadow-sm">
-                    <span class="material-symbols-outlined text-[16px]">search</span>
-                    Cari
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Tabs Segmented Buttons -->
-    <div class="mb-4 md:mb-6 flex gap-2 border-b border-outline-variant pb-px">
-        <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'active'])) }}" 
-           class="px-5 py-3 font-semibold text-sm transition-all border-b-2 {{ $tab !== 'closed' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-on-surface' }}">
-            Aktif ({{ $activeCount }})
-        </a>
-        <a href="{{ route('procurements.index', array_merge(request()->except(['page']), ['tab' => 'closed'])) }}" 
-           class="px-5 py-3 font-semibold text-sm transition-all border-b-2 {{ $tab === 'closed' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-on-surface' }}">
-            Selesai ({{ $closedCount }})
-        </a>
+                <!-- Filter Actions -->
+                <div class="flex justify-end gap-2 mt-3 pt-2 border-t border-outline-variant/30">
+                    <a href="{{ route('procurements.index', ['tab' => $tab]) }}" class="px-3 py-1.5 border border-outline text-secondary hover:bg-surface-container rounded-lg font-semibold text-xs transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                        Reset Filter
+                    </a>
+                    <button type="submit" class="bg-primary hover:bg-primary-container text-on-primary px-4 py-1.5 rounded-lg font-semibold text-xs transition-colors flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-[16px]">filter_alt</span>
+                        Terapkan Filter
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- ================================================================
          CASES LIST
-         Desktop → table (unchanged)
+         Desktop → table
          Mobile  → card list
     ================================================================ -->
     @if($cases->isEmpty())
-        <!-- Empty State -->
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm px-6 py-16 flex flex-col items-center text-center max-w-xl mx-auto">
-            <div class="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center text-primary mb-6 shadow-sm">
-                <span class="material-symbols-outlined text-[48px]">shopping_bag</span>
-            </div>
-            <h3 class="text-xl font-bold text-on-surface mb-2">Belum ada Pengadaan Khusus</h3>
-            <p class="text-sm text-on-surface-variant leading-relaxed mb-6">
-                Gunakan modul ini untuk membuat permintaan pembelian sparepart non-rutin, machining, fabrication, service, atau kebutuhan maintenance yang tidak tersedia di gudang.
-            </p>
-            @can('create', App\Models\ProcurementCase::class)
-                <a href="{{ route('procurements.create') }}" class="bg-primary hover:bg-primary-container text-on-primary px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 text-sm shadow-md">
-                    <span class="material-symbols-outlined text-[20px]">add</span>
-                    Buat Pengadaan Baru
+        @if(request()->filled('search') || request()->filled('status') || request()->filled('urgency') || request()->filled('category') || request()->filled('owner') || request()->filled('my_cases'))
+            <!-- Empty Filter/Search State -->
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm px-6 py-12 flex flex-col items-center text-center max-w-md mx-auto mb-6">
+                <div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-4">
+                    <span class="material-symbols-outlined text-[32px]">search_off</span>
+                </div>
+                <h3 class="text-base font-bold text-on-surface mb-1">Tidak Ditemukan</h3>
+                <p class="text-xs text-on-surface-variant mb-4">
+                    @if(request()->filled('search'))
+                        Tidak ditemukan procurement untuk "<strong>{{ request('search') }}</strong>" pada tab {{ $tab === 'closed' ? 'Selesai' : 'Aktif' }}.
+                    @else
+                        Tidak ada pengadaan khusus yang cocok dengan kombinasi filter yang dipilih.
+                    @endif
+                </p>
+                <a href="{{ route('procurements.index', ['tab' => $tab]) }}" class="px-4 py-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant rounded-lg text-xs font-bold text-on-surface transition-colors flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                    Hapus Pencarian &amp; Filter
                 </a>
-            @endcan
-        </div>
+            </div>
+        @else
+            <!-- Global Empty State -->
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm px-6 py-16 flex flex-col items-center text-center max-w-xl mx-auto mb-6">
+                <div class="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center text-primary mb-6 shadow-sm">
+                    <span class="material-symbols-outlined text-[48px]">shopping_bag</span>
+                </div>
+                <h3 class="text-xl font-bold text-on-surface mb-2">Belum ada Pengadaan Khusus</h3>
+                <p class="text-sm text-on-surface-variant leading-relaxed mb-6">
+                    Gunakan modul ini untuk membuat permintaan pembelian sparepart non-rutin, machining, fabrication, service, atau kebutuhan maintenance yang tidak tersedia di gudang.
+                </p>
+                @can('create', App\Models\ProcurementCase::class)
+                    <a href="{{ route('procurements.create') }}" class="bg-primary hover:bg-primary-container text-on-primary px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 text-sm shadow-md">
+                        <span class="material-symbols-outlined text-[20px]">add</span>
+                        Buat Pengadaan Baru
+                    </a>
+                @endcan
+            </div>
+        @endif
     @else
 
         {{-- ════════════════════════════════════════════════════════════
              DESKTOP TABLE (hidden on mobile)
         ════════════════════════════════════════════════════════════ --}}
-        <div class="hidden md:block bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+        <div class="hidden md:block bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm mb-6">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -463,7 +426,7 @@
         {{-- ════════════════════════════════════════════════════════════
              MOBILE CARD LIST (hidden on desktop)
         ════════════════════════════════════════════════════════════ --}}
-        <div class="md:hidden space-y-3">
+        <div class="md:hidden space-y-3 mb-6">
             @foreach($cases as $case)
                 @php
                     $urgencyClass = match($case->urgency->value) {
@@ -554,13 +517,7 @@
 
     @endif
 
-    {{-- Filter Toggle Script + Desktop override --}}
-    <style>
-    @media (min-width: 768px) {
-        #filter-fields { display: block !important; }
-        #filter-toggle-btn { display: none !important; }
-    }
-    </style>
+    {{-- Filter Toggle Script --}}
     <script>
     (function() {
         const btn    = document.getElementById('filter-toggle-btn');
@@ -568,12 +525,12 @@
         const arrow  = document.getElementById('filter-arrow');
         if (!btn || !fields) return;
 
-        // If any filter is active on page load, auto-open on mobile
+        // If any advanced filter is active on page load, auto-open
         const params = new URLSearchParams(window.location.search);
         const active = ['status','urgency','category','owner','my_cases']
             .some(k => params.has(k) && params.get(k) !== '');
 
-        if (active && window.innerWidth < 768) {
+        if (active) {
             fields.style.display = 'block';
             if (arrow) arrow.style.transform = 'rotate(180deg)';
         }

@@ -38,7 +38,9 @@ class AppServiceProvider extends ServiceProvider
                         str_contains($trace['class'], 'ProcurementWorkflowTest') ||
                         str_contains($trace['class'], 'RBACFeatureTest') ||
                         str_contains($trace['class'], 'ProcurementAttachmentTest') ||
-                        str_contains($trace['class'], 'ProcurementExtraTest')
+                        str_contains($trace['class'], 'ProcurementExtraTest') ||
+                        str_contains($trace['class'], 'GeneralMaintenanceReportTest') ||
+                        str_contains($trace['class'], 'SparepartMonitorTest')
                     )) {
                         $isAuthTest = true;
                         break;

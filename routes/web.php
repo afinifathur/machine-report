@@ -73,6 +73,9 @@ Route::middleware('auth')->group(function () {
 
     // Spareparts Integration
     Route::get('/spareparts', [SparepartIntegrationController::class, 'index'])->name('spareparts.index');
+    Route::get('/spareparts/export/excel', [SparepartIntegrationController::class, 'exportExcel'])->name('spareparts.export.excel');
+    Route::get('/spareparts/export/pdf', [SparepartIntegrationController::class, 'exportPdf'])->name('spareparts.export.pdf');
+    Route::get('/spareparts/machines/autocomplete', [SparepartIntegrationController::class, 'machineAutocomplete'])->name('spareparts.machines.autocomplete');
     Route::get('/spareparts/unmapped-machines', [SparepartIntegrationController::class, 'unmappedMachines'])->name('spareparts.unmapped-machines');
     Route::get('/spareparts/{code}', [SparepartIntegrationController::class, 'show'])->name('spareparts.show');
 
@@ -100,10 +103,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/planning/{plan}/print', [MaintenanceExecutionController::class, 'print'])->name('planning.print');
     Route::get('/planning/{plan}/report', [MaintenanceExecutionController::class, 'report'])->name('planning.report');
 
-    // Reports
-    Route::get('/reports', function () {
-        return view('reports.index');
-    })->name('reports.index');
+    // Reports (General Maintenance Report & Exports)
+    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export/excel', [\App\Http\Controllers\ReportController::class, 'exportExcel'])->name('reports.export.excel');
+    Route::get('/reports/export/pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('reports.export.pdf');
 
     Route::get('/admin', function () {
         abort_unless(auth()->user()->can('employee.view') || auth()->user()->can('admin.manage.users'), 403);

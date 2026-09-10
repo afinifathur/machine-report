@@ -6,7 +6,7 @@ use App\Models\Machine;
 use App\Models\MachineRequiredSparepart;
 use App\Integrations\WMS\Repositories\SparepartLookupRepositoryInterface;
 use App\Integrations\WMS\Services\MachineSparepartService;
-use App\Integrations\WMS\DTOs\SparepartItemDTO;
+use App\Services\SparepartMonitorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -14,7 +14,8 @@ class SparepartIntegrationController extends Controller
 {
     public function __construct(
         protected SparepartLookupRepositoryInterface $sparepartRepo,
-        protected MachineSparepartService $sparepartService
+        protected MachineSparepartService $sparepartService,
+        protected SparepartMonitorService $monitorService
     ) {}
 
     /**
@@ -24,170 +25,114 @@ class SparepartIntegrationController extends Controller
     {
         abort_unless(auth()->user()->can('sparepart.view'), 403);
 
-        // ---------------------------------------------------------
-        // A. MACHINE MAPPING HEALTH DATA
-        // ---------------------------------------------------------
-        $activeMachinesQuery = Machine::where('is_active', true)
-            ->where('lifecycle_status', 'ACTIVE');
+        $filters = [
+            'search' => $request->input('search'),
+            'machine' => $request->input('machine', $request->input('machine_id')),
+            'status' => $request->input('status'),
+            'criticality' => $request->input('criticality'),
+        ];
 
-        $totalMachinesCount = $activeMachinesQuery->count();
+        $reportData = $this->monitorService->getMonitorData($filters);
+        
+        $perPage = 15;
+        $paginatedItems = $this->monitorService->paginateItems(
+            $reportData['items'], 
+            $perPage, 
+            (int) $request->input('page', 1), 
+            $request->query()
+        );
 
-        // Mapped machines: active machines having at least one required sparepart
-        $mappedMachineIds = MachineRequiredSparepart::pluck('machine_id')->unique()->toArray();
-        $mappedMachinesCount = Machine::where('is_active', true)
+        $allMachines = Machine::where('is_active', true)
             ->where('lifecycle_status', 'ACTIVE')
-            ->whereIn('id', $mappedMachineIds)
-            ->count();
+            ->orderBy('code')
+            ->get();
 
-        $unmappedMachinesCount = max(0, $totalMachinesCount - $mappedMachinesCount);
+        return view('spareparts.index', [
+            'items' => $reportData['items'],
+            'paginatedItems' => $paginatedItems,
+            'statusCounts' => $reportData['statusCounts'],
+            'totalMachinesCount' => $reportData['totalMachinesCount'],
+            'mappedMachinesCount' => $reportData['mappedMachinesCount'],
+            'unmappedMachinesCount' => $reportData['unmappedMachinesCount'],
+            'selectedMachine' => $reportData['selectedMachine'],
+            'meta' => $reportData['meta'],
+            'allMachines' => $allMachines,
+            'lastSyncTime' => $reportData['lastSyncTime'],
+            'dataSourceMode' => $reportData['dataSourceMode'],
+        ]);
+    }
 
-        // ---------------------------------------------------------
-        // B. SPAREPART MONITORING DATA
-        // ---------------------------------------------------------
-        // Get all unique warehouse item codes mapped
-        $mappings = MachineRequiredSparepart::with('machine')
-            ->get()
-            ->groupBy('warehouse_item_code');
+    /**
+     * Export Sparepart Monitor to Excel / CSV.
+     */
+    public function exportExcel(Request $request)
+    {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
 
-        $erpCodes = $mappings->keys()->toArray();
-
-        // Fetch WMS stock data for these codes
-        $wmsDetailsMap = $this->sparepartRepo->getItemsDetails($erpCodes);
-
-        $items = [];
-        $statusCounts = [
-            'critical' => 0,
-            'reorder' => 0,
-            'healthy' => 0,
-            'overstock' => 0,
-            'unknown' => 0,
+        $filters = [
+            'search' => $request->input('search'),
+            'machine' => $request->input('machine', $request->input('machine_id')),
+            'status' => $request->input('status'),
+            'criticality' => $request->input('criticality'),
         ];
 
-        foreach ($mappings as $code => $machineMappings) {
-            /** @var SparepartItemDTO $dto */
-            $dto = $wmsDetailsMap[$code] ?? SparepartItemDTO::offlineFallback($code, isOffline: true);
+        $reportData = $this->monitorService->getMonitorData($filters);
+        $csvContent = $this->monitorService->generateExcel($reportData['items'], $reportData['meta']);
 
-            // Compute overall lead time (prioritize WMS lead time, fallback to mapping database field)
-            $maxLeadTime = $dto->leadTimeDays ?? $machineMappings->max('lead_time_days') ?? 7;
+        $filename = 'Sparepart_Monitor_' . date('Ymd_His') . '.csv';
 
-            // Compute overall criticality (A > B > C)
-            $criticalityVal = 'C';
-            $criticalities = $machineMappings->pluck('maintenance_criticality')->toArray();
-            if (in_array('A', $criticalities)) {
-                $criticalityVal = 'A';
-            } elseif (in_array('B', $criticalities)) {
-                $criticalityVal = 'B';
-            }
+        return response($csvContent, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
 
-            // Resolve Stock Status using Service
-            $statusInfo = $this->sparepartService->resolveStockStatus($dto, $maxLeadTime);
-            $statusCode = $statusInfo['code'] ?? 'unknown';
+    /**
+     * Export Sparepart Monitor to PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
 
-            // Handle offline state fallback to unknown for counts
-            $countKey = in_array($statusCode, ['critical', 'reorder', 'healthy', 'overstock', 'unknown']) ? $statusCode : 'unknown';
-            $statusCounts[$countKey]++;
+        $filters = [
+            'search' => $request->input('search'),
+            'machine' => $request->input('machine', $request->input('machine_id')),
+            'status' => $request->input('status'),
+            'criticality' => $request->input('criticality'),
+        ];
 
-            // Build item row data
-            $items[] = [
-                'erp_code' => $code,
-                'name' => $dto->name,
-                'brand' => $dto->brand,
-                'unit' => $dto->unit,
-                'category' => $dto->category ?? 'General',
-                'stock' => $dto->stock,
-                'weekly_average' => $dto->weeklyAverage,
-                'lead_time' => $maxLeadTime,
-                'min_stock' => $statusInfo['min_stock'] ?? null,
-                'target_stock' => $statusInfo['target_stock'] ?? null,
-                'coverage' => $machineMappings->count(),
-                'criticality' => $criticalityVal,
-                'status' => $statusInfo,
-                'machines' => $machineMappings->map(fn($m) => $m->machine)->filter(),
-                'last_audit_at' => $dto->lastAuditAt,
+        $reportData = $this->monitorService->getMonitorData($filters);
+        $pdfContent = $this->monitorService->generatePdf($reportData['items'], $reportData['meta']);
+
+        $filename = 'Sparepart_Monitor_' . date('Ymd') . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "inline; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Search machines for autocomplete.
+     */
+    public function machineAutocomplete(Request $request)
+    {
+        abort_unless(auth()->user()->can('sparepart.view'), 403);
+
+        $query = $request->input('search', $request->input('q', ''));
+        $machines = $this->monitorService->searchMachines((string) $query, 20);
+
+        $results = $machines->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'code' => $m->code,
+                'name' => $m->name,
+                'department' => $m->department,
+                'label' => "{$m->code} — {$m->name}",
             ];
-        }
-
-        // ---------------------------------------------------------
-        // C. FILTERING & SEARCHING
-        // ---------------------------------------------------------
-        $search = $request->input('search');
-        $machineFilter = $request->input('machine');
-        $statusFilter = $request->input('status');
-        $criticalityFilter = $request->input('criticality');
-
-        if (!empty($search)) {
-            $searchLower = strtolower($search);
-            $items = array_filter($items, function ($item) use ($searchLower) {
-                return str_contains(strtolower($item['erp_code']), $searchLower) ||
-                       str_contains(strtolower($item['name']), $searchLower);
-            });
-        }
-
-        if (!empty($machineFilter)) {
-            $items = array_filter($items, function ($item) use ($machineFilter) {
-                foreach ($item['machines'] as $mach) {
-                    if ($mach && ($mach->id == $machineFilter || $mach->code === $machineFilter)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-        }
-
-        if (!empty($statusFilter)) {
-            $items = array_filter($items, function ($item) use ($statusFilter) {
-                return $item['status']['code'] === $statusFilter;
-            });
-        }
-
-        if (!empty($criticalityFilter)) {
-            $items = array_filter($items, function ($item) use ($criticalityFilter) {
-                return $item['criticality'] === $criticalityFilter;
-            });
-        }
-
-        // ---------------------------------------------------------
-        // D. SORTING (Critical -> Reorder -> Healthy -> Overstock -> Unknown)
-        // ---------------------------------------------------------
-        $statusOrder = [
-            'critical' => 1,
-            'reorder' => 2,
-            'healthy' => 3,
-            'overstock' => 4,
-            'unknown' => 5,
-            'offline' => 6,
-        ];
-
-        usort($items, function ($a, $b) use ($statusOrder) {
-            $orderA = $statusOrder[$a['status']['code']] ?? 99;
-            $orderB = $statusOrder[$b['status']['code']] ?? 99;
-            
-            if ($orderA !== $orderB) {
-                return $orderA <=> $orderB;
-            }
-            
-            return strcmp($a['erp_code'], $b['erp_code']);
         });
 
-        // ---------------------------------------------------------
-        // E. WIDGET & METRICS DATA
-        // ---------------------------------------------------------
-        $allMachines = Machine::where('is_active', true)->where('lifecycle_status', 'ACTIVE')->orderBy('name')->get();
-
-        // Sync Observability
-        $lastSyncTime = date('Y-m-d H:i') . ' WIB';
-        $dataSourceMode = app()->environment('testing') ? 'Mock' : 'Live';
-
-        return view('spareparts.index', compact(
-            'items',
-            'statusCounts',
-            'totalMachinesCount',
-            'mappedMachinesCount',
-            'unmappedMachinesCount',
-            'allMachines',
-            'lastSyncTime',
-            'dataSourceMode'
-        ));
+        return response()->json($results);
     }
 
     /**

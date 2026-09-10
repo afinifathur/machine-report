@@ -26,23 +26,44 @@ class ProcurementCaseController extends Controller
     {
         $this->authorize('viewAny', ProcurementCase::class);
 
+        $tab = $request->input('tab', 'active');
         $query = ProcurementCase::with(['machine', 'creator', 'category']);
 
-        // Search (Global search matching Case Number, Item Name, Machine Name, Category Name, Reason, Current Owner)
+        // Tab-level filtering (Active vs Closed)
+        if (!$request->filled('status') && !$request->filled('status_group')) {
+            if ($tab === 'closed') {
+                $query->whereIn('status', [
+                    \App\Enums\ProcurementStatus::CLOSED,
+                    \App\Enums\ProcurementStatus::CANCELLED
+                ]);
+            } else {
+                $query->whereNotIn('status', [
+                    \App\Enums\ProcurementStatus::CLOSED,
+                    \App\Enums\ProcurementStatus::CANCELLED
+                ]);
+            }
+        }
+
+        // Search (Global search matching Item Name, Case Number, Vendor, Machine, Category, Reason, Owner)
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('case_number', 'like', "%{$search}%")
-                  ->orWhere('item_name', 'like', "%{$search}%")
-                  ->orWhere('current_owner', 'like', "%{$search}%")
-                  ->orWhere('reason', 'like', "%{$search}%")
-                  ->orWhereHas('machine', function ($mq) use ($search) {
-                      $mq->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('category', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%");
-                  });
-            });
+            $search = trim($request->input('search'));
+            if ($search !== '') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('item_name', 'like', "%{$search}%")
+                      ->orWhere('case_number', 'like', "%{$search}%")
+                      ->orWhere('vendor_name', 'like', "%{$search}%")
+                      ->orWhere('current_owner', 'like', "%{$search}%")
+                      ->orWhere('reason', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('machine', function ($mq) use ($search) {
+                          $mq->where('name', 'like', "%{$search}%")
+                             ->orWhere('code', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
         }
 
         // Filtering by Status
@@ -100,22 +121,27 @@ class ProcurementCaseController extends Controller
             }
         }
 
-        // Summary Counts (calculating dynamic card counts based on search / other filters applied)
+        // Summary Counts
         $countQuery = ProcurementCase::query();
         if ($request->filled('search')) {
-            $search = $request->input('search');
-            $countQuery->where(function ($q) use ($search) {
-                $q->where('case_number', 'like', "%{$search}%")
-                  ->orWhere('item_name', 'like', "%{$search}%")
-                  ->orWhere('current_owner', 'like', "%{$search}%")
-                  ->orWhere('reason', 'like', "%{$search}%")
-                  ->orWhereHas('machine', function ($mq) use ($search) {
-                      $mq->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('category', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%");
-                  });
-            });
+            $search = trim($request->input('search'));
+            if ($search !== '') {
+                $countQuery->where(function ($q) use ($search) {
+                    $q->where('item_name', 'like', "%{$search}%")
+                      ->orWhere('case_number', 'like', "%{$search}%")
+                      ->orWhere('vendor_name', 'like', "%{$search}%")
+                      ->orWhere('current_owner', 'like', "%{$search}%")
+                      ->orWhere('reason', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('machine', function ($mq) use ($search) {
+                          $mq->where('name', 'like', "%{$search}%")
+                             ->orWhere('code', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($cq) use ($search) {
+                          $cq->where('name', 'like', "%{$search}%");
+                      });
+                });
+            }
         }
         if ($request->filled('urgency')) {
             $countQuery->where('urgency', $request->input('urgency'));
@@ -150,14 +176,25 @@ class ProcurementCaseController extends Controller
             \App\Enums\ProcurementStatus::CANCELLED
         ])->count();
 
-        $cases = $query->latest()->paginate(20)->withQueryString();
+        // Total Tab Counts (total records for each tab regardless of search term)
+        $activeCount = ProcurementCase::whereNotIn('status', [
+            \App\Enums\ProcurementStatus::CLOSED,
+            \App\Enums\ProcurementStatus::CANCELLED
+        ])->count();
+        $totalClosedCount = ProcurementCase::whereIn('status', [
+            \App\Enums\ProcurementStatus::CLOSED,
+            \App\Enums\ProcurementStatus::CANCELLED
+        ])->count();
+
+        $cases = $query->latest()->paginate(10)->withQueryString();
 
         $categories = \App\Models\ProcurementCategory::where('is_active', true)->orderBy('name')->get();
         $owners = ProcurementCase::select('current_owner')->distinct()->pluck('current_owner');
 
         return view('procurements.index', compact(
             'cases', 'categories', 'owners',
-            'draftCount', 'pendingCount', 'processingCount', 'readyCount', 'closedCount'
+            'draftCount', 'pendingCount', 'processingCount', 'readyCount', 'closedCount',
+            'activeCount', 'totalClosedCount', 'tab'
         ));
     }
 

@@ -94,11 +94,24 @@
 
         <!-- Reports -->
         @can('report.view')
-        <a class="flex items-center gap-2 px-4 py-2.5 transition-colors {{ request()->routeIs('reports.*') ? 'text-primary dark:text-primary-fixed border-r-4 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
-           href="{{ route('reports.index') }}">
-            <span class="material-symbols-outlined" data-icon="description">description</span>
-            <span class="font-body-md text-body-md {{ request()->routeIs('reports.*') ? 'font-semibold' : '' }}">Laporan</span>
-        </a>
+        <div class="space-y-1">
+            <button type="button" 
+                    onclick="document.getElementById('reports-submenu').classList.toggle('hidden'); document.getElementById('reports-chevron').classList.toggle('rotate-180');"
+                    class="w-full flex items-center justify-between px-4 py-2.5 transition-colors {{ request()->routeIs('reports.*') ? 'text-primary dark:text-primary-fixed bg-secondary-container/40 dark:bg-secondary-container-highest/40 font-semibold' : 'text-on-surface-variant dark:text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined" data-icon="description">description</span>
+                    <span class="font-body-md text-body-md">Laporan</span>
+                </div>
+                <span id="reports-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ request()->routeIs('reports.*') ? 'rotate-180' : '' }}">expand_more</span>
+            </button>
+            <div id="reports-submenu" class="{{ request()->routeIs('reports.*') ? '' : 'hidden' }} pl-9 pr-3 py-1 space-y-1">
+                <a class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors {{ request()->routeIs('reports.index') ? 'text-primary dark:text-primary-fixed font-bold border-r-2 border-primary dark:border-primary-fixed bg-secondary-container dark:bg-secondary-container-highest' : 'text-on-surface-variant opacity-80 hover:bg-surface-container-high dark:hover:bg-surface-container-highest' }}" 
+                   href="{{ route('reports.index') }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
+                    <span>Laporan Umum</span>
+                </a>
+            </div>
+        </div>
         @endcan
 
         <!-- Administration -->
