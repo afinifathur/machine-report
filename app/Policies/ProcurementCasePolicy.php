@@ -121,7 +121,7 @@ class ProcurementCasePolicy
      */
     public function inputPO(User $user, ProcurementCase $case): bool
     {
-        return $case->status === ProcurementStatus::PROCESSING 
+        return in_array($case->status, [ProcurementStatus::PROCESSING, ProcurementStatus::PENDING_DIR]) 
             && ($user->hasPermissionTo('procurement.process') || $user->hasAnyRole(['Purchasing']));
     }
 

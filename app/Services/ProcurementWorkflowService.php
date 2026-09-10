@@ -7,6 +7,7 @@ use App\Enums\ProcurementStatus;
 use App\Models\Approval;
 use App\Models\ProcurementCase;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ProcurementWorkflowService
@@ -135,24 +136,28 @@ class ProcurementWorkflowService
      */
     public function approveStage2(ProcurementCase $case, User $user, ?string $note): ProcurementCase
     {
-        if ($case->status !== ProcurementStatus::PENDING_DIR) {
-            throw new \Exception('Aksi hanya boleh dijalankan jika status PENDING DIR.');
-        }
+        return DB::transaction(function () use ($case, $user, $note) {
+            $lockedCase = ProcurementCase::where('id', $case->id)->lockForUpdate()->firstOrFail();
 
-        Approval::create([
-            'procurement_case_id' => $case->id,
-            'user_id' => $user->id,
-            'stage' => 2,
-            'decision' => ApprovalDecision::APPROVED,
-            'note' => $note,
-        ]);
+            if ($lockedCase->status !== ProcurementStatus::PENDING_DIR) {
+                throw new \Exception('Aksi hanya boleh dijalankan jika status PENDING DIR.');
+            }
 
-        $case->update([
-            'status' => ProcurementStatus::PROCESSING,
-            'current_owner' => 'Purchasing',
-        ]);
+            Approval::create([
+                'procurement_case_id' => $lockedCase->id,
+                'user_id' => $user->id,
+                'stage' => 2,
+                'decision' => ApprovalDecision::APPROVED,
+                'note' => $note,
+            ]);
 
-        return $case;
+            $lockedCase->update([
+                'status' => ProcurementStatus::PROCESSING,
+                'current_owner' => 'Purchasing',
+            ]);
+
+            return $lockedCase;
+        });
     }
 
     /**
@@ -225,25 +230,41 @@ class ProcurementWorkflowService
     /**
      * Input PO (Purchasing).
      */
-    public function inputPO(ProcurementCase $case, string $poNumber, string $vendorName, string $poDate): ProcurementCase
+    public function inputPO(ProcurementCase $case, string $poNumber, string $vendorName, string $poDate, ?User $user = null): ProcurementCase
     {
-        if ($case->status !== ProcurementStatus::PROCESSING) {
-            throw new \Exception('Aksi hanya boleh dijalankan jika status PROCESSING.');
-        }
+        return DB::transaction(function () use ($case, $poNumber, $vendorName, $poDate, $user) {
+            $lockedCase = ProcurementCase::where('id', $case->id)->lockForUpdate()->firstOrFail();
 
-        if (empty(trim($poNumber)) || empty(trim($vendorName)) || empty(trim($poDate))) {
-            throw new \Exception('Nomor PO, Vendor, dan Tanggal PO wajib diisi.');
-        }
+            if (!in_array($lockedCase->status, [ProcurementStatus::PROCESSING, ProcurementStatus::PENDING_DIR])) {
+                throw new \Exception('Aksi hanya boleh dijalankan jika status PROCESSING atau PENDING DIR.');
+            }
 
-        $case->update([
-            'po_number' => $poNumber,
-            'vendor_name' => $vendorName,
-            'po_date' => $poDate,
-            'status' => ProcurementStatus::WAITING_DELIVERY,
-            'current_owner' => 'Purchasing',
-        ]);
+            if (empty(trim($poNumber)) || empty(trim($vendorName)) || empty(trim($poDate))) {
+                throw new \Exception('Nomor PO, Vendor, dan Tanggal PO wajib diisi.');
+            }
 
-        return $case;
+            // If proceeding from PENDING_DIR, record the Director approval as SKIPPED under delegated purchasing authority
+            if ($lockedCase->status === ProcurementStatus::PENDING_DIR) {
+                $actingUserId = $user?->id ?? auth()->id() ?? $lockedCase->created_by;
+                Approval::create([
+                    'procurement_case_id' => $lockedCase->id,
+                    'user_id' => $actingUserId,
+                    'stage' => 2,
+                    'decision' => ApprovalDecision::SKIPPED,
+                    'note' => 'Director approval skipped under delegated purchasing authority.',
+                ]);
+            }
+
+            $lockedCase->update([
+                'po_number' => $poNumber,
+                'vendor_name' => $vendorName,
+                'po_date' => $poDate,
+                'status' => ProcurementStatus::WAITING_DELIVERY,
+                'current_owner' => 'Purchasing',
+            ]);
+
+            return $lockedCase;
+        });
     }
 
     /**

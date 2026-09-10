@@ -271,19 +271,78 @@ class ProcurementWorkflowTest extends TestCase
         $this->assertEquals(ProcurementStatus::WAITING_DELIVERY, $case->fresh()->status);
     }
 
-    public function test_negative_input_po_before_processing(): void
+    public function test_delegated_purchasing_path_skips_director_approval(): void
     {
-        // Status is PENDING_DIR (still needs Director approval before purchasing can process)
         $case = $this->createCaseAtStatus(ProcurementStatus::PENDING_DIR, 'Direktur');
 
         $this->actingAs($this->purchasingUser);
         $response = $this->post(route('procurements.input-po', $case->id), [
-            'po_number' => 'PO-2026-ERROR',
-            'vendor_name' => 'Bad Vendor',
+            'po_number' => 'PO-2026-SKIP-01',
+            'vendor_name' => 'PT. Delegated Vendor',
+            'po_date' => now()->toDateString(),
+        ]);
+
+        $response->assertRedirect();
+        $refreshedCase = $case->fresh();
+
+        $this->assertEquals(ProcurementStatus::WAITING_DELIVERY, $refreshedCase->status);
+        $this->assertEquals('Purchasing', $refreshedCase->current_owner);
+        $this->assertEquals('PO-2026-SKIP-01', $refreshedCase->po_number);
+        $this->assertEquals('PT. Delegated Vendor', $refreshedCase->vendor_name);
+
+        // Assert that a Stage 2 SKIPPED approval record was created with the purchasing user's ID
+        $this->assertDatabaseHas('approvals', [
+            'procurement_case_id' => $case->id,
+            'user_id' => $this->purchasingUser->id,
+            'stage' => 2,
+            'decision' => \App\Enums\ApprovalDecision::SKIPPED->value,
+            'note' => 'Director approval skipped under delegated purchasing authority.',
+        ]);
+
+        // Assert NO fake approved stage 2 record exists
+        $this->assertDatabaseMissing('approvals', [
+            'procurement_case_id' => $case->id,
+            'stage' => 2,
+            'decision' => \App\Enums\ApprovalDecision::APPROVED->value,
+        ]);
+    }
+
+    public function test_unauthorized_user_cannot_input_po_at_pending_dir(): void
+    {
+        $case = $this->createCaseAtStatus(ProcurementStatus::PENDING_DIR, 'Direktur');
+
+        // Admin Maintenance tries to input PO
+        $this->actingAs($this->adminUser);
+        $response = $this->post(route('procurements.input-po', $case->id), [
+            'po_number' => 'PO-2026-UNAUTH',
+            'vendor_name' => 'Unauth Vendor',
             'po_date' => now()->toDateString(),
         ]);
 
         $response->assertStatus(403);
         $this->assertEquals(ProcurementStatus::PENDING_DIR, $case->fresh()->status);
+    }
+
+    public function test_director_cannot_approve_after_purchasing_skip(): void
+    {
+        $case = $this->createCaseAtStatus(ProcurementStatus::PENDING_DIR, 'Direktur');
+
+        // Purchasing skips Director approval
+        $this->actingAs($this->purchasingUser);
+        $this->post(route('procurements.input-po', $case->id), [
+            'po_number' => 'PO-2026-SKIP-02',
+            'vendor_name' => 'PT. Fast Sourcing',
+            'po_date' => now()->toDateString(),
+        ]);
+        $this->assertEquals(ProcurementStatus::WAITING_DELIVERY, $case->fresh()->status);
+
+        // Director tries to approve stage 2 after case has already moved to WAITING_DELIVERY
+        $this->actingAs($this->direkturUser);
+        $response = $this->post(route('procurements.approve-stage-2', $case->id), [
+            'note' => 'Trying to approve after skip.',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertEquals(ProcurementStatus::WAITING_DELIVERY, $case->fresh()->status);
     }
 }

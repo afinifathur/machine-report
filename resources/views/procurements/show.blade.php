@@ -263,17 +263,24 @@
                         @foreach($procurement->approvals as $approval)
                             <div class="p-4 bg-surface-container rounded-xl text-sm border border-outline-variant">
                                 <div class="flex justify-between items-center mb-2">
-                                    <p class="font-semibold text-on-surface">Stage {{ $approval->stage }}: {{ $approval->user->name }}</p>
+                                    <p class="font-semibold text-on-surface">
+                                        @if($approval->stage === 2 && $approval->decision->value === 'skipped')
+                                            Stage 2: Director Approval (Delegated to {{ $approval->user->name }})
+                                        @else
+                                            Stage {{ $approval->stage }}: {{ $approval->user->name }}
+                                        @endif
+                                    </p>
                                     <span class="px-2 py-0.5 rounded text-xs font-bold 
                                         {{ $approval->decision->value === 'approved' ? 'bg-success-container text-on-success-container' : '' }}
                                         {{ $approval->decision->value === 'returned_for_info' ? 'bg-warning-container text-on-warning-container border border-outline-variant' : '' }}
                                         {{ $approval->decision->value === 'rejected' ? 'bg-error-container text-on-error-container border border-error' : '' }}
+                                        {{ $approval->decision->value === 'skipped' ? 'bg-surface-variant text-on-surface-variant border border-outline' : '' }}
                                     ">
                                         {{ strtoupper(str_replace('_', ' ', $approval->decision->value)) }}
                                     </span>
                                 </div>
                                 <p class="text-on-surface-variant italic">"{{ $approval->note ?? 'Tidak ada catatan tambahan.' }}"</p>
-                        <p class="text-[10px] text-on-surface-variant mt-2 text-right font-medium">{{ $approval->created_at->format('d M Y H:i') }}</p>
+                                <p class="text-[10px] text-on-surface-variant mt-2 text-right font-medium">{{ $approval->created_at->format('d M Y H:i') }}</p>
                             </div>
                         @endforeach
                     </div>
@@ -407,13 +414,25 @@
                     @endcan
                 @endif
 
-                <!-- PROCESSING ACTIONS (Purchasing PO input) -->
-                @if($procurement->status->value === 'processing')
+                <!-- PURCHASING PO INPUT (PROCESSING OR PENDING_DIR DELEGATED AUTHORITY) -->
+                @if(in_array($procurement->status->value, ['processing', 'pending_dir']))
                     @can('inputPO', $procurement)
-                        <form action="{{ route('procurements.input-po', $procurement->id) }}" method="POST" class="space-y-3 border-t pt-4 border-outline-variant">
+                        <form action="{{ route('procurements.input-po', $procurement->id) }}" method="POST" class="space-y-3 border-t pt-4 border-outline-variant" onsubmit="return {{ $procurement->status->value === 'pending_dir' ? "confirm('Procurement masih menunggu approval Direktur. Dengan menyimpan PO, Purchasing akan menggunakan delegated purchasing authority dan approval Direktur akan dicatat sebagai SKIPPED. Lanjutkan?')" : 'true' }};">
                             @csrf
                             <h4 class="text-xs font-bold text-on-surface">Input Data Pembelian</h4>
                             
+                            @if($procurement->status->value === 'pending_dir')
+                                <div class="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg text-xs space-y-1">
+                                    <p class="font-bold flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px] text-amber-700">info</span>
+                                        Delegated Purchasing Authority
+                                    </p>
+                                    <p class="text-[11px] leading-relaxed">
+                                        Input PO akan melanjutkan procurement tanpa approval Direktur berdasarkan delegated purchasing authority.
+                                    </p>
+                                </div>
+                            @endif
+
                             <div>
                                 <label class="block text-[11px] font-semibold mb-1">Nama Vendor <span class="text-error">*</span></label>
                                 <input type="text" name="vendor_name" required class="w-full px-3 py-2 bg-surface-container border border-outline-variant rounded-lg text-xs" placeholder="Nama PT / Pemasok..."/>

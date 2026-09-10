@@ -438,7 +438,8 @@ class ProcurementCaseController extends Controller
         ]);
 
         try {
-            $this->workflowService->inputPO($procurement, $validated['po_number'], $validated['vendor_name'], $validated['po_date']);
+            $user = auth()->user() ?? \App\Models\User::first();
+            $this->workflowService->inputPO($procurement, $validated['po_number'], $validated['vendor_name'], $validated['po_date'], $user);
             return redirect()->route('procurements.show', $procurement->id)
                 ->with('success', 'Informasi PO berhasil disimpan.');
         } catch (\Exception $e) {

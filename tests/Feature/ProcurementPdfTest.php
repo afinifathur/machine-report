@@ -355,4 +355,51 @@ class ProcurementPdfTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
     }
+
+    /**
+     * Test print handles skipped Director approval (delegated authority).
+     */
+    public function test_print_with_skipped_director_approval()
+    {
+        $case = ProcurementCase::create([
+            'case_number' => 'PC-' . now()->format('Ym') . '-0008',
+            'machine_id' => $this->machine->id,
+            'procurement_category_id' => $this->category->id,
+            'item_name' => 'Skipped Director Approval Item',
+            'urgency' => ProcurementUrgency::NORMAL,
+            'status' => ProcurementStatus::WAITING_DELIVERY,
+            'current_owner' => 'Purchasing',
+            'description' => 'Deskripsi',
+            'target_needed_date' => now()->toDateString(),
+            'vendor_name' => 'Vendor Test',
+            'po_number' => 'PO-SKIP-1234',
+            'po_date' => now()->toDateString(),
+            'created_by' => $this->adminUser->id,
+        ]);
+
+        // Add Stage 1 Approval (Kabag)
+        Approval::create([
+            'procurement_case_id' => $case->id,
+            'user_id' => $this->adminUser->id,
+            'stage' => 1,
+            'decision' => ApprovalDecision::APPROVED,
+            'note' => 'Disetujui kabag',
+        ]);
+
+        // Add Stage 2 Skipped by Purchasing
+        Approval::create([
+            'procurement_case_id' => $case->id,
+            'user_id' => $this->adminUser->id,
+            'stage' => 2,
+            'decision' => ApprovalDecision::SKIPPED,
+            'note' => 'Director approval skipped under delegated purchasing authority.',
+        ]);
+
+        $this->actingAs($this->adminUser);
+
+        $response = $this->get(route('procurements.print', $case->id));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+    }
 }

@@ -7,7 +7,10 @@
         } elseif ($user->hasAnyRole(['Director', 'Direktur'])) {
             $procurementBadgeCount = \App\Models\ProcurementCase::where('status', \App\Enums\ProcurementStatus::PENDING_DIR)->count();
         } elseif ($user->hasRole('Purchasing')) {
-            $procurementBadgeCount = \App\Models\ProcurementCase::where('status', \App\Enums\ProcurementStatus::PROCESSING)
+            $procurementBadgeCount = \App\Models\ProcurementCase::whereIn('status', [
+                \App\Enums\ProcurementStatus::PROCESSING,
+                \App\Enums\ProcurementStatus::PENDING_DIR,
+            ])
                 ->whereNull('po_number')
                 ->count();
         }

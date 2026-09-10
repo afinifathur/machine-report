@@ -318,7 +318,7 @@ class DocumentPdfService
 
             $history[] = [
                 'stage' => $stageLabel,
-                'decision' => ucfirst($decisionVal),
+                'decision' => ucfirst(str_replace('_', ' ', $decisionVal)),
                 'comment' => $approval->note ?? '-',
                 'datetime' => $approval->created_at ? $approval->created_at->format('d M Y H:i') : '-',
                 'user' => $approval->user->name ?? '-'
@@ -411,6 +411,9 @@ class DocumentPdfService
 
         // Director (Stage 2)
         $dirRec = $approvals->where('stage', 2)->filter(fn($app) => ($app->decision->value ?? $app->decision) === 'approved')->first();
+        $dirSkip = $approvals->where('stage', 2)->filter(fn($app) => ($app->decision->value ?? $app->decision) === 'skipped')->first();
+        $dirRej = $approvals->where('stage', 2)->filter(fn($app) => ($app->decision->value ?? $app->decision) === 'rejected')->first();
+
         $dirApproval = null;
         if ($dirRec) {
             $dirApproval = [
@@ -419,17 +422,21 @@ class DocumentPdfService
                 'date' => $dirRec->created_at ? $dirRec->created_at->format('d M Y H:i') : '-',
                 'ip' => '192.168.10.5'
             ];
-        } else {
-            $dirRej = $approvals->where('stage', 2)->filter(fn($app) => ($app->decision->value ?? $app->decision) === 'rejected')->first();
-            if ($dirRej) {
-                $dirApproval = [
-                    'status' => 'rejected',
-                    'name' => $dirRej->user->name ?? '-',
-                    'date' => $dirRej->created_at ? $dirRej->created_at->format('d M Y H:i') : '-',
-                    'ip' => '192.168.10.5',
-                    'note' => $dirRej->note
-                ];
-            }
+        } elseif ($dirSkip) {
+            $dirApproval = [
+                'status' => 'skipped',
+                'name' => $dirSkip->user->name ?? 'Purchasing',
+                'date' => $dirSkip->created_at ? $dirSkip->created_at->format('d M Y H:i') : '-',
+                'note' => $dirSkip->note ?? 'Delegated Purchasing Authority'
+            ];
+        } elseif ($dirRej) {
+            $dirApproval = [
+                'status' => 'rejected',
+                'name' => $dirRej->user->name ?? '-',
+                'date' => $dirRej->created_at ? $dirRej->created_at->format('d M Y H:i') : '-',
+                'ip' => '192.168.10.5',
+                'note' => $dirRej->note
+            ];
         }
 
         return [

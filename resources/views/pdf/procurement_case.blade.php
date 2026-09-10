@@ -265,6 +265,8 @@
             <td>
                 @if($approvals['director'] && $approvals['director']['status'] === 'approved')
                     <span class="summary-value font-mono">{{ $approvals['director']['date'] }}</span>
+                @elseif($approvals['director'] && $approvals['director']['status'] === 'skipped')
+                    <span class="summary-value font-mono" style="color: #64748b;">SKIPPED (DELEGATED)</span>
                 @else
                     <span class="summary-value font-mono">-</span>
                 @endif
@@ -419,6 +421,14 @@
                                 </td>
                             </tr>
                         </table>
+                    @elseif($approvals['director']['status'] === 'skipped')
+                        <div class="sig-stamp stamp-pending" style="border: 1px dashed #94a3b8; color: #475569; background-color: #f8fafc;">SKIPPED</div>
+                        <div style="font-size: 6.5pt; font-weight: bold; color: #475569; text-transform: uppercase; margin-top: 2px;">NOT REQUIRED</div>
+                        <div class="sig-meta" style="margin-top: 2px;">
+                            Delegated Authority by:<br/>
+                            <strong>{{ $approvals['director']['name'] }}</strong><br/>
+                            Date: {{ $approvals['director']['date'] }}
+                        </div>
                     @else
                         <div class="sig-stamp stamp-rejected">REJECTED</div>
                         <div style="font-size: 7pt; font-weight: bold; color: #1f2937;">{{ $approvals['director']['name'] }}</div>
